@@ -56,19 +56,14 @@ sudo apt install \
 
 ```bash
 # Create workspace
-mkdir -p ~/ros2_ws/src
-cd ~/ros2_ws
+mkdir -p ~/ros2_ws
+cd ~/ros2_ws/
 
 # Clone the repository
 git clone https://gitee.com/xiyue133/super_ros.git src/SUPER
 
-# Install dependencies via rosdep
-sudo rosdep init
-rosdep update
-rosdep install --from-paths src --ignore-src -r -y
-
 # Build the workspace
-colcon build --symlink-install --packages-select super_planner rog_map
+colcon build 
 
 # Source the workspace
 source install/setup.bash
@@ -82,16 +77,7 @@ source install/setup.bash
 # Source the workspace
 source ~/ros2_ws/install/setup.bash
 
-# Launch the FSM node
-ros2 launch super_planner rviz.launch.py
-```
-
-### Running the Planner
-
-```bash
-# Run the planner node
-ros2 run super_planner fsm_node
-```
+ros2 launch mission_planner click_demo.launch
 
 ## Configuration
 
