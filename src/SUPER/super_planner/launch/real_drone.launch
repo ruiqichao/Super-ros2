@@ -1,0 +1,33 @@
+<!-- 
+真实无人机部署Launch文件
+此文件用于在真实无人机平台上启动SUPER Planner系统
+
+核心组件说明:
+- FSM节点: 轨迹规划系统的主入口，负责接收目标点、传感器数据并调用规划器生成轨迹
+- ROG Map节点: 环境建图模块，订阅点云和里程计数据并生成地图
+
+使用说明:
+1. 确保已根据实际硬件配置修改config/click_smooth_ros1.yaml文件
+2. 确保传感器驱动已正确安装和配置
+3. 启动命令: roslaunch super_planner real_drone.launch
+
+真实部署配置指南:
+- 根据实际使用的飞控类型（PX4或ArduPilot）取消相应注释
+- 根据实际使用的传感器型号取消相应注释
+- 修改所有参数以匹配实际硬件配置
+-->
+
+<launch>
+    <!-- 参数服务器 -->
+    <rosparam file="$(find super_planner)/config/real_click_smooth_ros1.yaml" command="load"/>
+    
+    <!-- FSM节点 - 轨迹规划系统的主入口 -->
+    <node pkg="super_planner" type="fsm_node" name="fsm_node" output="screen">
+        <param name="config_path" value="$(find su
+
+    <node pkg="rog_map" type="rog_map_node" name="rog_map_node" output="screen">
+        <!-- 真实部署时，请确保传感器话题名称与配置文件一致 -->
+    </node>
+    
+
+</launch>

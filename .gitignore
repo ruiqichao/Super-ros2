@@ -1,0 +1,11 @@
+build/
+devel/
+log/
+install/
+*.log
+*.bag
+.log
+.idea/
+.vscode/
+.git/
+*.zip

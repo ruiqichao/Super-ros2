@@ -1,0 +1,191 @@
+
+# FSM (Finite State Machine) 节点配置
+# 用于管理无人机飞行状态机的相关参数
+fsm:
+  click_goal_en: true                          # 是否启用点击目标功能
+  click_goal_topic: "/goal_pose"               # 点击目标话题名称
+  click_height: 1.5                            # 点击目标的高度值
+  click_yaw_en: true                           # 是否启用点击偏航角功能
+  replan_rate: 15.0                            # 重规划频率 (Hz)
+  cmd_topic: "/planning/pos_cmd"               # 位置命令话题名称
+  mpc_cmd_topic: "/planning_cmd/poly_traj"     # MPC命令话题名称
+  px4_cmd_topic: "/planning/px4ctrl_cmd"          # PX4命令话题名称
+  timer_en: true                               # 是否启用定时器
+
+# 超级规划器 (Super Planner) 配置
+# 用于无人机轨迹规划的核心参数
+super_planner:
+  backup_traj_en: true                         # 是否启用备份轨迹
+  detailed_log_en: false                       # 是否启用详细日志记录
+  visualization_en: true                       # 是否启用可视化
+  use_fov_cut: false                           # 是否使用视场裁剪
+  print_log: false                             # 是否打印日志
+  visual_process: false                        # 是否启用视觉处理
+  frontend_in_known_free: false                # 是否在已知自由空间进行前端处理
+  goal_yaw_en: true                            # 是否启用目标点偏航角
+  goal_vel_en: true                           # 是否启用目标点速度
+  corridor_bound_dis: 1.0                      # 通道边界距离
+  corridor_line_max_length: 1.2                # 通道线最大长度
+  safe_corridor_line_max_length: 5.0           # 安全通道线最大长度
+  iris_iter_num: 2                             # IRIS迭代次数
+  obs_skip_num: 2                              # 跳过障碍物数量
+  replan_forward_dt: 0.1                       # 前瞻重规划时间间隔
+  planning_horizon: 7.0                        # 规划时间范围
+  sensing_horizon: -1                          # 感知范围 (-1表示全局)
+  receding_dis: 4.0                            # 递减距离
+  robot_r: 0.2                                 # 机器人半径
+  yaw_dot_max: 3.0                             # 偏航角速度最大值
+  yaw_mode: 1                                  # 偏航模式: 1 朝向速度方向, 2 朝向目标方向
+  mpc_horizon: 15                              # MPC时间步数
+
+# 轨迹优化 (Trajectory Optimization) 配置
+traj_opt:
+  # 开关配置
+  switch:
+    save_log_en: false                         # 是否保存日志
+    print_optimizer_log: false                 # 是否打印优化器日志
+
+  # 边界约束配置
+  boundary:
+    max_vel: 5.0                               # 最大速度
+    max_acc: 5.0                               # 最大加速度
+    max_jerk: 120.0                            # 最大加加速度
+    max_omg: 2.5                               # 最大角速度
+    max_acc_thr: 20.0                          # 最大推力加速度
+    min_acc_thr: 6.0                           # 最小推力加速度
+    penna_margin: 0.05                         # PENNA 边界
+
+  # 期望轨迹配置
+  exp_traj:
+    pos_constraint_type: 1                     # 位置约束类型: 1 用于xi, 2 用于位置
+    energy_cost_type: 4                        # 能量代价类型
+    block_energy_cost: false                   # 是否阻止能量代价
+    opt_accuracy: 1.0e-4                       # 优化精度
+    scale_factor: 1.0                          # 缩放因子
+    integral_reso: 10                          # 积分分辨率
+    smooth_eps: 0.05                           # 平滑参数
+    penna_t: 12000.0                           # 时间惩罚系数
+    penna_pos: 1.0e+6                          # 位置惩罚系数
+    penna_vel: 1.0e+5                          # 速度惩罚系数
+    penna_acc: 1.0e+5                          # 加速度惩罚系数
+    penna_jerk: -1.0e+5                        # 加加速度惩罚系数
+    penna_attract: 1.0e+2                      # 吸引子惩罚系数
+    penna_omg:  1.0e+5                         # 角速度惩罚系数
+    penna_thr: 1.0e+4                          # 推力惩罚系数
+
+  # 备份轨迹配置
+  backup_traj:
+    uniform_time_en: true                      # 是否使用统一时间
+    pos_constraint_type: 1                     # 位置约束类型
+    piece_num: 2                               # 分段数量
+    energy_cost_type: 4                        # 能量代价类型
+    block_energy_cost: true                    # 是否阻止能量代价
+    opt_accuracy: 1.0e-4                       # 优化精度
+    scale_factor: 1.0                          # 缩放因子
+    integral_reso: 8                           # 积分分辨率
+    smooth_eps: 0.05                           # 平滑参数
+    penna_t: 1200.0                            # 时间惩罚系数
+    penna_ts: 1.0e+5                           # 时间段惩罚系数
+    penna_pos: 5.0e+5                          # 位置惩罚系数
+    penna_vel: 5.0e+4                          # 速度惩罚系数
+    penna_acc: 5.0e+4                          # 加速度惩罚系数
+    penna_jerk: -5.0e+4                        # 加加速度惩罚系数
+    penna_omg: 5.0e+4                          # 角速度惩罚系数
+    penna_max_acc_thr: 5.0e+4                  # 最大推力加速度惩罚系数
+    penna_min_acc_thr: 5.0e+4                  # 最小推力加速度惩罚系数
+
+  # 扁平化配置
+  flatness:
+    mass: 1.64                                 # 无人机质量
+    dh: 0.35                                   # 水平阻力系数
+    dv: 0.35                                   # 垂直阻力系数
+    cp: 0.001                                  # 系数
+    v_eps: 0.0001                              # 速度小量
+    grav: 9.81                                 # 重力加速度
+
+
+# A* 路径搜索配置
+astar:
+  map_voxel_num: [ 500, 500, 100 ]             # 地图体素数量 [x, y, z]
+  visual_process: false                        # 是否在搜索过程中启用可视化功能(不要开启)
+  allow_diag: true                             # 是否允许对角线移动
+
+  heu_type: 2                                  # 启发式函数类型选择:
+                                               # 0 - 对角线距离(Diagonal Distance): 适用于允许8方向移动的场景,计算速度快但精度一般
+                                               # 1 - 曼哈顿距离(Manhattan Distance): 只计算水平和垂直方向的距离,适用于网格环境,计算最快但可能路径不够优
+                                               # 2 - 欧几里得距离(Euclidean Distance): 计算直线距离,精度最高,能获得更优路径,但计算开销稍大
+                                               # 推荐使用欧几里得距离以获得最优路径质量
+  debug_visualization_en: true                # 是否启用调试可视化
+
+
+# ROG 地图配置
+rog_map:
+  resolution: 0.1                              # 分辨率
+  inflation_resolution: 0.2                    # 膨胀分辨率
+  inflation_step: 2                            # 膨胀步数
+  unk_inflation_en: false                      # 是否启用未知区域膨胀
+  unk_inflation_step: 1                        # 未知区域膨胀步数
+  map_size: [ 50,50,6 ]                        # 地图大小 [x, y, z]
+  fix_map_origin: [ 0,0,1.5 ]                  # 如果地图滚动被禁用，应设置地图原点 [m]
+  frontier_extraction_en: false                # 是否启用前沿提取
+
+  virtual_ceil_height: 3.5                     # 虚拟天花板高度
+  virtual_ground_height: -0.1                  # 虚拟地面高度
+
+  load_pcd_en: false                           # 是否加载点云
+
+  # 地图滑动配置
+  map_sliding:
+    enable: true                               # 是否启用
+    threshold: 0.3                             # 地图滑动的最小距离 [m]
+
+  # ESDF (Euclidean Signed Distance Field) 配置
+  esdf:
+    enable: false                              # 是否启用
+    resolution: 0.1                            # 分辨率
+    local_update_box: [ 5,5,3 ]                # ESDF 更新范围 [m]
+
+  # 如果 [enable = true], ROG-Map 将主动接收ROS话题作为输入
+  # 否则用户应调用 [updateMap] 函数来更新地图
+  ros_callback:
+    enable: true                               # 是否启用
+    cloud_topic: "/cloud_registered"           # 点云话题
+    odom_topic: "/lidar_slam/odom"             # 里程计话题
+    odom_timeout: 2.0                          # 里程计超时时间
+
+
+  # 可视化配置
+  visualization:
+    enable: true                               # 是否启用
+    use_dynamic_reconfigure: false             # 当启用时，使用 rqt_reconfigure 来更改可视化参数
+    time_rate: 2                               # 可视化速率 [Hz], 如果设置为 0, 可视化不会被帧触发
+    frame_rate: 0                              # 可视化帧率 [Hz], 如果设置为 0, 可视化不会被帧触发
+    range: [ 15, 15,4 ]                        # 里程计附近的可视化范围 [m]
+    frame_id: "world"                          # 坐标系ID
+    pub_unknown_map_en: false                  # 是否发布未知地图
+
+  intensity_thresh: -10                        # 点云强度滤波器. 如果点的强度小于此值, 将被忽略 (避免黄昏等噪声)
+  point_filt_num: 1                            # 点云的时间下采样率, 例如如果设置为k, 点云将被下采样为1/k
+
+  # 概率更新
+  raycasting:
+    enable: false                              # 如果禁用, 地图将只保持占用信息, 其他网格将被视为未知
+    batch_update_size: 1                       # 批处理更新大小
+    local_update_box: [ 100,100,5 ]            # 局部更新框
+    ray_range: [0.5, 100 ]                     # 射线投射范围 [m]
+
+    # 概率参数
+    p_min: 0.12                                # 最小概率
+    p_miss: 0.49                               # 未命中概率
+    p_free: 0.499                              # 自由概率
+    p_occ: 0.85                                # 占用概率
+    p_hit: 0.9                                 # 命中概率
+    p_max: 0.98                                # 最大概率
+    unk_thresh: 1.0                            # 非占用信息地图网格被视为自由的阈值 [0.0-1.0]
+                                               # 对于计数地图, 如果每个单元格在概率地图中包含N个单元格, 则仅当
+                                               # N_unk > N * unk_thresh 单元格是未知的, 单元格将被视为未知
+                                               # 示例: 1) 如果 unk_thresh 设置为 0.0, 则一旦概率地图中的至少一个单元格是未知的,
+                                               #             单元格将被视为未知
+                                               #         2) 如果 unk_thresh 设置为 1.0, 则仅当概率地图中的所有单元格都是未知的,
+                                               #             单元格将被视为未知
+                                               # 总之, 1.0 更具攻击性，而 0.0 更保守

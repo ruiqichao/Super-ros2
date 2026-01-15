@@ -1,0 +1,9 @@
+
+# 请求部分：用于发送仿真步进指令
+px4ctrl_msgs/Command command  # 控制命令
+bool command_valid             # 命令是否有效
+
+---
+
+# 响应部分：返回仿真状态
+px4ctrl_msgs/State state       # 当前状态

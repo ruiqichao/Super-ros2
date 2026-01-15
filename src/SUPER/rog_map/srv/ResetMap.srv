@@ -1,0 +1,7 @@
+# Request
+# No request parameters needed for resetting the map
+
+---
+# Response
+bool success
+string message
