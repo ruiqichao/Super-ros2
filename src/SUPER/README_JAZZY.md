@@ -36,6 +36,26 @@ sudo apt install python3-argcomplete
 
 ### 2. Install Dependencies
 
+#### Automatic Installation (Recommended)
+
+We provide an automatic installation script that will install all required dependencies:
+
+```bash
+cd /home/ruiqichao/ros2_ws/super_ws/src/SUPER
+chmod +x install_dependencies.sh
+./install_dependencies.sh
+```
+
+This script will:
+- Install all ROS2 Jazzy dependencies
+- Install system-level libraries (Eigen, PCL, OpenCV, etc.)
+- Install Python dependencies
+- Prepare the system for building the project
+
+#### Manual Installation
+
+Alternatively, you can install dependencies manually:
+
 ```bash
 sudo apt update
 sudo apt install \
