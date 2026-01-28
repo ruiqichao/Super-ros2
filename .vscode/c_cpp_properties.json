@@ -1,0 +1,41 @@
+{
+    "configurations": [
+        {
+            "name": "ROS2 Humble",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "/opt/ros/humble/include",
+                "/home/ruiqichao/ros2_demo/planner/super_ws/super_ros/src/SUPER/super_planner/include",
+                "/home/ruiqichao/ros2_demo/planner/super_ws/super_ros/src/SUPER/rog_map/include",
+                "/home/ruiqichao/ros2_demo/planner/super_ws/super_ros/src/SUPER/mars_uav_sim/mars_quadrotor_msgs/ros2_msg",
+                "/home/ruiqichao/ros2_demo/planner/super_ws/super_ros/install/super_planner/include",
+                "/home/ruiqichao/ros2_demo/planner/super_ws/super_ros/install/rog_map/include",
+                "/home/ruiqichao/ros2_demo/planner/super_ws/super_ros/install/mars_quadrotor_msgs/include",
+                "/home/ruiqichao/ros2_demo/planner/super_ws/super_ros/install/px4ctrl_msgs/include",
+                "/usr/include/pcl-1.12",
+                "/usr/include/eigen3",
+                "/usr/include/boost",
+                "/opt/ros/humble/include/rclcpp",
+                "/opt/ros/humble/include/std_msgs",
+                "/opt/ros/humble/include/sensor_msgs",
+                "/opt/ros/humble/include/geometry_msgs",
+                "/opt/ros/humble/include/nav_msgs",
+                "/opt/ros/humble/include/visualization_msgs",
+                "/opt/ros/humble/include/tf2",
+                "/opt/ros/humble/include/tf2_ros",
+                "/opt/ros/humble/include/tf2_eigen",
+                "/opt/ros/humble/include/tf2_geometry_msgs"
+            ],
+            "defines": [
+                "ROS_DISTRO_HUMBLE",
+                "RCLCPP_ENABLE_DEFAULT_SIGNAL_HANDLER",
+                "DEFAULT_RMW_IMPLEMENTATION=rmw_fastrtps_cpp"
+            ],
+            "compilerPath": "/usr/bin/gcc",
+            "cStandard": "gnu17",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "linux-gcc-x64"
+        }
+    ],
+    "version": 4
+}

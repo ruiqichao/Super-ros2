@@ -6,6 +6,6 @@ install/
 *.bag
 .log
 .idea/
-.vscode/
 .git/
 *.zip
+.cache/

@@ -8,7 +8,7 @@ from launch_ros.actions import Node
 
 
 def generate_launch_description():
-    default_config_name = 'click_smooth_ros2.yaml'
+    default_config_name = 'click_real_ros2.yaml'
 
     declare_config_name_cmd = DeclareLaunchArgument(
         'config_name', default_value=default_config_name,

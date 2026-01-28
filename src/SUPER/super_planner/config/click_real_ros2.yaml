@@ -15,10 +15,10 @@ fsm:
 # 超级规划器 (Super Planner) 配置
 # 用于无人机轨迹规划的核心参数
 super_planner:
-  backup_traj_en: true                         # 是否启用备份轨迹
+  backup_traj_en: false                         # 是否启用备份轨迹
   detailed_log_en: false                       # 是否启用详细日志记录
   visualization_en: true                       # 是否启用可视化
-  use_fov_cut: false                           # 是否使用视场裁剪
+  use_fov_cut: true                           # 是否使用视场裁剪
   print_log: false                             # 是否打印日志
   visual_process: false                        # 是否启用视觉处理
   frontend_in_known_free: false                # 是否在已知自由空间进行前端处理
@@ -124,7 +124,7 @@ rog_map:
   fix_map_origin: [ 0,0,1.5 ]                  # 如果地图滚动被禁用，应设置地图原点 [m]
   frontier_extraction_en: false                # 是否启用前沿提取
 
-  virtual_ceil_height: 1.5                     # 虚拟天花板高度
+  virtual_ceil_height: 4.0                     # 虚拟天花板高度
   virtual_ground_height: -1.0                  # 虚拟地面高度
 
   load_pcd_en: false                           # 是否加载点云
@@ -144,8 +144,8 @@ rog_map:
   # 否则用户应调用 [updateMap] 函数来更新地图
   ros_callback:
     enable: true                               # 是否启用
-    cloud_topic: "/fastlio2/world_cloud"           # 点云话题
-    odom_topic: "/fastlio2/lio_odom"             # 里程计话题
+    cloud_topic: "/map_scan"           # 点云话题
+    odom_topic: "/mavros/odometry/out"             # 里程计话题
     odom_timeout: 2.0                          # 里程计超时时间
 
 
