@@ -1,9 +1,19 @@
-# SUPER for ROS2 Jazzy
+# SUPER for ROS2 (Humble and Jazzy)
 
-This is the SUPER (Safe Urban Perception and Exploration Robot) project adapted for ROS2 Jazzy Jalisco.
+This is the SUPER (Safe Urban Perception and Exploration Robot) project adapted for ROS2 Humble Hawksbill and Jazzy Jalisco.
 
 ## Prerequisites
 
+### For ROS2 Humble:
+- Ubuntu 22.04 LTS
+- ROS2 Humble Hawksbill
+- C++17 compatible compiler
+- CMake >= 3.5
+- PCL (Point Cloud Library)
+- Eigen3
+- yaml-cpp
+
+### For ROS2 Jazzy:
 - Ubuntu 24.04 LTS
 - ROS2 Jazzy Jalisco
 - C++17 compatible compiler
@@ -14,7 +24,11 @@ This is the SUPER (Safe Urban Perception and Exploration Robot) project adapted 
 
 ## Installation
 
-### 1. Install ROS2 Jazzy
+### 1. Install ROS2
+
+Choose the appropriate ROS2 distribution for your Ubuntu version:
+
+#### For ROS2 Humble (Ubuntu 22.04):
 
 Follow the official installation guide:
 ```bash
@@ -26,7 +40,27 @@ export LANG=en_US.UTF-8
 # Setup sources
 sudo apt update && sudo apt install curl gnupg lsb-release
 sudo curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key -o /usr/share/keyrings/ros-archive-keyring.gpg
-echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/ros2.list > /dev/null
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu jammy main" | sudo tee /etc/apt/sources.list.d/ros2.list > /dev/null
+
+# Install ROS2 Humble
+sudo apt update
+sudo apt install ros-humble-desktop
+sudo apt install python3-argcomplete
+```
+
+#### For ROS2 Jazzy (Ubuntu 24.04):
+
+Follow the official installation guide:
+```bash
+# Setup locale
+sudo locale-gen en_US en_US.UTF-8
+sudo update-locale LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8
+export LANG=en_US.UTF-8
+
+# Setup sources
+sudo apt update && sudo apt install curl gnupg lsb-release
+sudo curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key -o /usr/share/keyrings/ros-archive-keyring.gpg
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu noble main" | sudo tee /etc/apt/sources.list.d/ros2.list > /dev/null
 
 # Install ROS2 Jazzy
 sudo apt update
@@ -47,7 +81,7 @@ chmod +x install_dependencies.sh
 ```
 
 This script will:
-- Install all ROS2 Jazzy dependencies
+- Install all ROS2 dependencies (Humble or Jazzy)
 - Install system-level libraries (Eigen, PCL, OpenCV, etc.)
 - Install Python dependencies
 - Prepare the system for building the project
@@ -96,11 +130,23 @@ source install/setup.bash
 
 ## Usage
 
+**Important**: Before launching any nodes, ensure you have sourced both the ROS2 distribution and the workspace:
+
+```bash
+# Source the appropriate ROS2 distribution
+# For ROS2 Humble:
+source /opt/ros/humble/setup.bash
+# OR for ROS2 Jazzy:
+source /opt/ros/jazzy/setup.bash
+
+# Then source the workspace
+source ~/ros2_ws/install/setup.bash
+```
+
 ### Launch the Planner
 
 ```bash
-# Source the workspace
-source ~/ros2_ws/install/setup.bash
+# Source the workspace (as shown above)
 
 # Launch the FSM node
 ros2 launch super_planner rviz.launch.py
@@ -109,6 +155,8 @@ ros2 launch super_planner rviz.launch.py
 ### Running the Planner
 
 ```bash
+# Source the workspace (as shown above)
+
 # Run the planner node
 ros2 run super_planner fsm_node
 ```
@@ -151,12 +199,19 @@ colcon build --packages-select super_planner
 colcon build --cmake-args -DCMAKE_BUILD_TYPE=Debug
 ```
 
-## Notes for ROS2 Jazzy
+## Notes for ROS2 Humble and Jazzy
 
-- This project has been tested with ROS2 Jazzy Jalisco
-- Uses the FastDDS middleware by default
+### For ROS2 Humble:
+- Tested with Ubuntu 22.04
+- Compatible with Python 3.10
+- Uses ament_cmake build system
+
+### For ROS2 Jazzy:
+- Tested with Ubuntu 24.04
 - Compatible with Python 3.12
 - Uses ament_cmake build system
+
+Both distributions use FastDDS middleware by default.
 
 ## Contributing
 
