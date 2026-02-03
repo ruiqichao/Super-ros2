@@ -6,7 +6,7 @@ fsm:
   click_goal_topic: "/goal"               # 点击目标话题名称
   click_height: 0.5                            # 点击目标的高度值
   click_yaw_en: true                           # 是否启用点击偏航角功能
-  replan_rate: 15.0                            # 重规划频率 (Hz)
+  replan_rate: 10                         # 重规划频率 (Hz)
   cmd_topic: "/planning/pos_cmd"               # 位置命令话题名称
   mpc_cmd_topic: "/planning_cmd/poly_traj"     # MPC命令话题名称
   px4_cmd_topic: "/planning/px4ctrl_cmd"       # PX4命令话题名称
@@ -15,22 +15,22 @@ fsm:
 # 超级规划器 (Super Planner) 配置
 # 用于无人机轨迹规划的核心参数
 super_planner:
-  backup_traj_en: false                         # 是否启用备份轨迹
+  backup_traj_en: true                         # 是否启用备份轨迹
   detailed_log_en: false                       # 是否启用详细日志记录
   visualization_en: true                       # 是否启用可视化
-  use_fov_cut: true                           # 是否使用视场裁剪
+  use_fov_cut: false                           # 是否使用视场裁剪
   print_log: false                             # 是否打印日志
   visual_process: false                        # 是否启用视觉处理
   frontend_in_known_free: false                # 是否在已知自由空间进行前端处理
   goal_yaw_en: true                            # 是否启用目标点偏航角
-  goal_vel_en: false                           # 是否启用目标点速度
-  corridor_bound_dis: 1.0                      # 通道边界距离
-  corridor_line_max_length: 1.2                # 通道线最大长度
-  safe_corridor_line_max_length: 5.0           # 安全通道线最大长度
+  goal_vel_en: true                           # 是否启用目标点速度
+  corridor_bound_dis: 0.5                      # 通道边界距离
+  corridor_line_max_length: 1.0                # 通道线最大长度
+  safe_corridor_line_max_length: 2.0           # 安全通道线最大长度
   iris_iter_num: 2                             # IRIS迭代次数
   obs_skip_num: 2                              # 跳过障碍物数量
   replan_forward_dt: 0.1                       # 前瞻重规划时间间隔
-  planning_horizon: 7.0                        # 规划时间范围
+  planning_horizon: 3.0                        # 规划时间范围
   sensing_horizon: -1                          # 感知范围 (-1表示全局)
   receding_dis: 4.0                            # 递减距离
   robot_r: 0.2                                 # 机器人半径
@@ -47,31 +47,31 @@ traj_opt:
 
   # 边界约束配置
   boundary:
-    max_vel: 5.0                               # 最大速度
-    max_acc: 5.0                               # 最大加速度
+    max_vel: 1.0                               # 最大速度
+    max_acc: 1.0                               # 最大加速度
     max_jerk: 120.0                            # 最大加加速度
-    max_omg: 2.5                               # 最大角速度
+    max_omg: 1.0                               # 最大角速度
     max_acc_thr: 20.0                          # 最大推力加速度
     min_acc_thr: 6.0                           # 最小推力加速度
-    penna_margin: 0.05                         # PENNA 边界
+    penna_margin: 0.50                         # PENNA 边界
 
   # 显式轨迹配置
   exp_traj:
     pos_constraint_type: 1                     # 位置约束类型: 1 用于xi, 2 用于位置
     energy_cost_type: 4                        # 能量代价类型
     block_energy_cost: false                   # 是否阻止能量代价
-    opt_accuracy: 1.0e-4                       # 优化精度
+    opt_accuracy: 5.0e-6                       # 优化精度
     scale_factor: 1.0                          # 缩放因子
-    integral_reso: 10                          # 积分分辨率
+    integral_reso: 15                          # 积分分辨率
     smooth_eps: 0.05                           # 平滑参数
     penna_t: 12000.0                           # 时间惩罚系数
-    penna_pos: 1.0e+6                          # 位置惩罚系数
-    penna_vel: 1.0e+5                          # 速度惩罚系数
-    penna_acc: 1.0e+5                          # 加速度惩罚系数
-    penna_jerk: -1.0e+5                        # 加加速度惩罚系数
-    penna_attract: 1.0e+2                      # 吸引子惩罚系数
-    penna_omg:  1.0e+5                         # 角速度惩罚系数
-    penna_thr: 1.0e+4                          # 推力惩罚系数
+    penna_pos: 5.0e+6                          # 位置惩罚系数
+    penna_vel: 5.0e+5                          # 速度惩罚系数
+    penna_acc: 5.0e+5                          # 加速度惩罚系数
+    penna_jerk: -5.0e+5                       # 加加速度惩罚系数
+    penna_attract: 1.0e+3                      # 吸引子惩罚系数
+    penna_omg:  5.0e+5                         # 角速度惩罚系数
+    penna_thr: 1.0e+5                          # 推力惩罚系数
 
   # 备份轨迹配置
   backup_traj:
@@ -82,15 +82,15 @@ traj_opt:
     block_energy_cost: true                    # 是否阻止能量代价
     opt_accuracy: 1.0e-6                       # 优化精度
     scale_factor: 1.0                          # 缩放因子
-    integral_reso: 8                           # 积分分辨率
+    integral_reso: 12                           # 积分分辨率
     smooth_eps: 0.01                           # 平滑参数
     penna_t: 1200.0                            # 时间惩罚系数
     penna_ts: 1.0e+5                           # 时间段惩罚系数
-    penna_pos: 5.0e+6                          # 位置惩罚系数
-    penna_vel: 5.0e+5                          # 速度惩罚系数
-    penna_acc: 5.0e+5                          # 加速度惩罚系数
-    penna_jerk: -5.0e+5                        # 加加速度惩罚系数
-    penna_omg: 5.0e+5                          # 角速度惩罚系数
+    penna_pos: 1.0e+6                          # 位置惩罚系数
+    penna_vel: 1.0e+5                          # 速度惩罚系数
+    penna_acc: 1.0e+5                         # 加速度惩罚系数
+    penna_jerk: -1.0e+5                        # 加加速度惩罚系数
+    penna_omg: 1.0e+5                          # 角速度惩罚系数
     penna_max_acc_thr: 1.0e+5                  # 最大推力加速度惩罚系数
     penna_min_acc_thr: 1.0e+5                  # 最小推力加速度惩罚系数
 
@@ -106,17 +106,17 @@ traj_opt:
 
 # A* 路径搜索配置
 astar:
-  map_voxel_num: [ 500, 500, 100 ]             # 地图体素数量 [x, y, z]
+  map_voxel_num: [ 200, 200, 100 ]             # 地图体素数量 [x, y, z]
   visual_process: false                        # 是否启用视觉处理
   allow_diag: true                             # 是否允许对角线移动
-  heu_type: 2                                  # 启发式类型: 0 对角线, 1 曼哈顿, 2 欧几里得
-  debug_visualization_en: false                # 是否启用调试可视化
+  heu_type: 1                                  # 启发式类型: 0 对角线, 1 曼哈顿, 2 欧几里得
+  debug_visualization_en: true                # 是否启用调试可视化
 
 
 # ROG 地图配置
 rog_map:
-  resolution: 0.1                              # 分辨率
-  inflation_resolution: 0.2                    # 膨胀分辨率
+  resolution: 0.05                              # 分辨率
+  inflation_resolution: 0.1                    # 膨胀分辨率
   inflation_step: 2                            # 膨胀步数
   unk_inflation_en: false                      # 是否启用未知区域膨胀
   unk_inflation_step: 1                        # 未知区域膨胀步数
@@ -124,8 +124,8 @@ rog_map:
   fix_map_origin: [ 0,0,1.5 ]                  # 如果地图滚动被禁用，应设置地图原点 [m]
   frontier_extraction_en: false                # 是否启用前沿提取
 
-  virtual_ceil_height: 4.0                     # 虚拟天花板高度
-  virtual_ground_height: -1.0                  # 虚拟地面高度
+  virtual_ceil_height: 1.5                     # 虚拟天花板高度
+  virtual_ground_height: -1.1                  # 虚拟地面高度
 
   load_pcd_en: false                           # 是否加载点云
 
@@ -136,7 +136,7 @@ rog_map:
 
   # ESDF (Euclidean Signed Distance Field) 配置
   esdf:
-    enable: false                              # 是否启用
+    enable: true                              # 是否启用
     resolution: 0.1                            # 分辨率
     local_update_box: [ 5,5,3 ]                # ESDF 更新范围 [m]
 
@@ -152,11 +152,11 @@ rog_map:
   # 可视化配置
   visualization:
     enable: true                               # 是否启用
-    use_dynamic_reconfigure: false             # 当启用时，使用 rqt_reconfigure 来更改可视化参数
-    time_rate: 2                               # 可视化速率 [Hz], 如果设置为 0, 可视化不会被帧触发
+    use_dynamic_reconfigure: true             # 当启用时，使用 rqt_reconfigure 来更改可视化参数
+    time_rate: 1                               # 可视化速率 [Hz], 如果设置为 0, 可视化不会被帧触发
     frame_rate: 0                              # 可视化帧率 [Hz], 如果设置为 0, 可视化不会被帧触发
     range: [ 15, 15,4 ]                        # 里程计附近的可视化范围 [m]
-    frame_id: "world"                          # 坐标系ID
+    frame_id: "odom"                          # 坐标系ID
     pub_unknown_map_en: false                  # 是否发布未知地图
 
   intensity_thresh: -10                        # 点云强度滤波器. 如果点的强度小于此值, 将被忽略 (避免黄昏等噪声)

@@ -467,6 +467,26 @@ namespace fsm {
                 if (!backup_traj_result.successful) {
                     result.successful = false;
                 }
+                
+                auto yaw_traj_params = parameters;
+                auto yaw_traj_result = planner_ptr_->getYawTrajOptDynamicConfig().dynamicParametersCallback(yaw_traj_params);
+                if (!yaw_traj_result.successful) {
+                    result.successful = false;
+                }
+                
+                // 添加Astar动态参数回调
+                auto astar_params = parameters;
+                auto astar_result = planner_ptr_->getAstarDynamicConfig().dynamicParametersCallback(astar_params);
+                if (!astar_result.successful) {
+                    result.successful = false;
+                }
+                
+                // 添加CorridorGenerator动态参数回调
+                auto corridor_params = parameters;
+                auto corridor_result = planner_ptr_->getCorridorGenDynamicConfig().dynamicParametersCallback(corridor_params);
+                if (!corridor_result.successful) {
+                    result.successful = false;
+                }
                         
                 // 立即更新优化器配置以应用最新参数
                 if (planner_ptr_) {
@@ -475,6 +495,15 @@ namespace fsm {
                     }
                     if (planner_ptr_->getBackupTrajOpt()) {
                         planner_ptr_->getBackupTrajOpt()->updateOptimizerConfig();
+                    }
+                    if (planner_ptr_->getYawTrajOpt()) {
+                        planner_ptr_->getYawTrajOpt()->updateOptimizerConfig();
+                    }
+                    if (planner_ptr_->getAstar()) {
+                        planner_ptr_->getAstar()->updateOptimizerConfig();
+                    }
+                    if (planner_ptr_->getCorridorGenerator()) {
+                        planner_ptr_->getCorridorGenerator()->updateOptimizerConfig();
                     }
                 }
             }
@@ -487,45 +516,95 @@ namespace fsm {
          * @note 在初始化时调用此函数注册参数回调
          */
         void registerDynamicParameters() {
-            // 声明并初始化参数，使其在rqt_reconfigure中可见
-            nh_->declare_parameter("traj_opt.boundary.max_vel", rclcpp::ParameterValue(1.0));
-            nh_->declare_parameter("traj_opt.boundary.max_acc", rclcpp::ParameterValue(5.0));
-            nh_->declare_parameter("traj_opt.boundary.max_jerk", rclcpp::ParameterValue(120.0));
+            if (!planner_ptr_) return;
+            const auto& planner_cfg = planner_ptr_->getConfig();
+
+            // 声明并初始化参数，使用从YAML加载的配置值作为默认值
+            nh_->declare_parameter("traj_opt.boundary.max_vel", rclcpp::ParameterValue(planner_cfg.exp_traj_cfg.max_vel));
+            nh_->declare_parameter("traj_opt.boundary.max_acc", rclcpp::ParameterValue(planner_cfg.exp_traj_cfg.max_acc));
+            nh_->declare_parameter("traj_opt.boundary.max_jerk", rclcpp::ParameterValue(planner_cfg.exp_traj_cfg.max_jerk));
             
             // 探索轨迹优化参数
-            nh_->declare_parameter("traj_opt.exp_traj.pos_constraint_type", rclcpp::ParameterValue(1));
-            nh_->declare_parameter("traj_opt.exp_traj.block_energy_cost", rclcpp::ParameterValue(false));
-            nh_->declare_parameter("traj_opt.exp_traj.opt_accuracy", rclcpp::ParameterValue(1.0e-4));
-            nh_->declare_parameter("traj_opt.exp_traj.smooth_eps", rclcpp::ParameterValue(0.05));
-            nh_->declare_parameter("traj_opt.exp_traj.integral_reso", rclcpp::ParameterValue(10));
-            nh_->declare_parameter("traj_opt.exp_traj.penna_t", rclcpp::ParameterValue(12000.0));
-            nh_->declare_parameter("traj_opt.exp_traj.penna_pos", rclcpp::ParameterValue(1.0e+6));
-            nh_->declare_parameter("traj_opt.exp_traj.penna_vel", rclcpp::ParameterValue(1.0e+5));
-            nh_->declare_parameter("traj_opt.exp_traj.penna_acc", rclcpp::ParameterValue(1.0e+5));
-            nh_->declare_parameter("traj_opt.exp_traj.penna_jerk", rclcpp::ParameterValue(-1.0e+5));
-            nh_->declare_parameter("traj_opt.exp_traj.penna_attract", rclcpp::ParameterValue(1.0e+2));
-            nh_->declare_parameter("traj_opt.exp_traj.penna_omg", rclcpp::ParameterValue(1.0e+5));
-            nh_->declare_parameter("traj_opt.exp_traj.penna_thr", rclcpp::ParameterValue(1.0e+4));
+            nh_->declare_parameter("traj_opt.exp_traj.pos_constraint_type", rclcpp::ParameterValue(planner_cfg.exp_traj_cfg.pos_constraint_type));
+            nh_->declare_parameter("traj_opt.exp_traj.block_energy_cost", rclcpp::ParameterValue(planner_cfg.exp_traj_cfg.block_energy_cost));
+            nh_->declare_parameter("traj_opt.exp_traj.opt_accuracy", rclcpp::ParameterValue(planner_cfg.exp_traj_cfg.opt_accuracy));
+            nh_->declare_parameter("traj_opt.exp_traj.smooth_eps", rclcpp::ParameterValue(planner_cfg.exp_traj_cfg.smooth_eps));
+            nh_->declare_parameter("traj_opt.exp_traj.integral_reso", rclcpp::ParameterValue(planner_cfg.exp_traj_cfg.integral_reso));
+            nh_->declare_parameter("traj_opt.exp_traj.penna_t", rclcpp::ParameterValue(planner_cfg.exp_traj_cfg.penna_t));
+            nh_->declare_parameter("traj_opt.exp_traj.penna_pos", rclcpp::ParameterValue(planner_cfg.exp_traj_cfg.penna_pos));
+            nh_->declare_parameter("traj_opt.exp_traj.penna_vel", rclcpp::ParameterValue(planner_cfg.exp_traj_cfg.penna_vel));
+            nh_->declare_parameter("traj_opt.exp_traj.penna_acc", rclcpp::ParameterValue(planner_cfg.exp_traj_cfg.penna_acc));
+            nh_->declare_parameter("traj_opt.exp_traj.penna_jerk", rclcpp::ParameterValue(planner_cfg.exp_traj_cfg.penna_jerk));
+            nh_->declare_parameter("traj_opt.exp_traj.penna_attract", rclcpp::ParameterValue(planner_cfg.exp_traj_cfg.penna_attract));
+            nh_->declare_parameter("traj_opt.exp_traj.penna_omg", rclcpp::ParameterValue(planner_cfg.exp_traj_cfg.penna_omg));
+            nh_->declare_parameter("traj_opt.exp_traj.penna_thr", rclcpp::ParameterValue(planner_cfg.exp_traj_cfg.penna_thr));
             
             // 备份轨迹优化参数
-            nh_->declare_parameter("traj_opt.backup_traj.uniform_time_en", rclcpp::ParameterValue(true));
-            nh_->declare_parameter("traj_opt.backup_traj.pos_constraint_type", rclcpp::ParameterValue(1));
-            nh_->declare_parameter("traj_opt.backup_traj.piece_num", rclcpp::ParameterValue(2));
-            nh_->declare_parameter("traj_opt.backup_traj.block_energy_cost", rclcpp::ParameterValue(true));
-            nh_->declare_parameter("traj_opt.backup_traj.opt_accuracy", rclcpp::ParameterValue(1.0e-4));
-            nh_->declare_parameter("traj_opt.backup_traj.smooth_eps", rclcpp::ParameterValue(0.05));
-            nh_->declare_parameter("traj_opt.backup_traj.integral_reso", rclcpp::ParameterValue(10));
-            nh_->declare_parameter("traj_opt.backup_traj.penna_t", rclcpp::ParameterValue(12000.0));
-            nh_->declare_parameter("traj_opt.backup_traj.penna_ts", rclcpp::ParameterValue(1.0e+5));
-            nh_->declare_parameter("traj_opt.backup_traj.penna_pos", rclcpp::ParameterValue(1.0e+6));
-            nh_->declare_parameter("traj_opt.backup_traj.penna_vel", rclcpp::ParameterValue(1.0e+5));
-            nh_->declare_parameter("traj_opt.backup_traj.penna_acc", rclcpp::ParameterValue(1.0e+5));
-            nh_->declare_parameter("traj_opt.backup_traj.penna_jerk", rclcpp::ParameterValue(-1.0e+5));
-            nh_->declare_parameter("traj_opt.backup_traj.penna_attract", rclcpp::ParameterValue(1.0e+2));
-            nh_->declare_parameter("traj_opt.backup_traj.penna_omg", rclcpp::ParameterValue(1.0e+5));
-            nh_->declare_parameter("traj_opt.backup_traj.penna_thr", rclcpp::ParameterValue(1.0e+4));
-            nh_->declare_parameter("traj_opt.backup_traj.penna_max_acc_thr", rclcpp::ParameterValue(1.0e+4));
-            nh_->declare_parameter("traj_opt.backup_traj.penna_min_acc_thr", rclcpp::ParameterValue(1.0e+4));
+            nh_->declare_parameter("traj_opt.backup_traj.uniform_time_en", rclcpp::ParameterValue(planner_cfg.back_traj_cfg.uniform_time_en));
+            nh_->declare_parameter("traj_opt.backup_traj.pos_constraint_type", rclcpp::ParameterValue(planner_cfg.back_traj_cfg.pos_constraint_type));
+            nh_->declare_parameter("traj_opt.backup_traj.piece_num", rclcpp::ParameterValue(planner_cfg.back_traj_cfg.piece_num));
+            nh_->declare_parameter("traj_opt.backup_traj.block_energy_cost", rclcpp::ParameterValue(planner_cfg.back_traj_cfg.block_energy_cost));
+            nh_->declare_parameter("traj_opt.backup_traj.opt_accuracy", rclcpp::ParameterValue(planner_cfg.back_traj_cfg.opt_accuracy));
+            nh_->declare_parameter("traj_opt.backup_traj.smooth_eps", rclcpp::ParameterValue(planner_cfg.back_traj_cfg.smooth_eps));
+            nh_->declare_parameter("traj_opt.backup_traj.integral_reso", rclcpp::ParameterValue(planner_cfg.back_traj_cfg.integral_reso));
+            nh_->declare_parameter("traj_opt.backup_traj.penna_t", rclcpp::ParameterValue(planner_cfg.back_traj_cfg.penna_t));
+            nh_->declare_parameter("traj_opt.backup_traj.penna_ts", rclcpp::ParameterValue(planner_cfg.back_traj_cfg.penna_ts));
+            nh_->declare_parameter("traj_opt.backup_traj.penna_pos", rclcpp::ParameterValue(planner_cfg.back_traj_cfg.penna_pos));
+            nh_->declare_parameter("traj_opt.backup_traj.penna_vel", rclcpp::ParameterValue(planner_cfg.back_traj_cfg.penna_vel));
+            nh_->declare_parameter("traj_opt.backup_traj.penna_acc", rclcpp::ParameterValue(planner_cfg.back_traj_cfg.penna_acc));
+            nh_->declare_parameter("traj_opt.backup_traj.penna_jerk", rclcpp::ParameterValue(planner_cfg.back_traj_cfg.penna_jerk));
+            nh_->declare_parameter("traj_opt.backup_traj.penna_attract", rclcpp::ParameterValue(planner_cfg.back_traj_cfg.penna_attract));
+            nh_->declare_parameter("traj_opt.backup_traj.penna_omg", rclcpp::ParameterValue(planner_cfg.back_traj_cfg.penna_omg));
+            nh_->declare_parameter("traj_opt.backup_traj.penna_thr", rclcpp::ParameterValue(planner_cfg.back_traj_cfg.penna_thr));
+            nh_->declare_parameter("traj_opt.backup_traj.penna_max_acc_thr", rclcpp::ParameterValue(planner_cfg.back_traj_cfg.max_acc_thr));
+            nh_->declare_parameter("traj_opt.backup_traj.penna_min_acc_thr", rclcpp::ParameterValue(planner_cfg.back_traj_cfg.min_acc_thr));
+            
+            // 偏航轨迹优化参数
+            nh_->declare_parameter("traj_opt.yaw_traj.yaw_dot_max", rclcpp::ParameterValue(planner_cfg.yaw_dot_max));
+            
+            // 其他轨迹优化边界参数
+            nh_->declare_parameter("traj_opt.boundary.max_omg", rclcpp::ParameterValue(planner_cfg.exp_traj_cfg.max_omg));
+            nh_->declare_parameter("traj_opt.boundary.max_acc_thr", rclcpp::ParameterValue(planner_cfg.exp_traj_cfg.max_acc_thr));
+            nh_->declare_parameter("traj_opt.boundary.min_acc_thr", rclcpp::ParameterValue(planner_cfg.exp_traj_cfg.min_acc_thr));
+            nh_->declare_parameter("traj_opt.boundary.penna_margin", rclcpp::ParameterValue(planner_cfg.exp_traj_cfg.penna_margin));
+            
+            // 轨迹优化开关 (路径与YAML保持一致)
+            nh_->declare_parameter("traj_opt.switch.save_log_en", rclcpp::ParameterValue(planner_cfg.exp_traj_cfg.save_log_en));
+            nh_->declare_parameter("traj_opt.switch.print_optimizer_log", rclcpp::ParameterValue(planner_cfg.exp_traj_cfg.print_optimizer_log));
+            
+            // 规划器策略开关与全局参数
+            nh_->declare_parameter("super_planner.backup_traj_en", rclcpp::ParameterValue(planner_cfg.backup_traj_en));
+            nh_->declare_parameter("super_planner.use_fov_cut", rclcpp::ParameterValue(planner_cfg.use_fov_cut));
+            nh_->declare_parameter("super_planner.print_log", rclcpp::ParameterValue(planner_cfg.print_log));
+            nh_->declare_parameter("super_planner.goal_vel_en", rclcpp::ParameterValue(planner_cfg.goal_vel_en));
+            nh_->declare_parameter("super_planner.goal_yaw_en", rclcpp::ParameterValue(planner_cfg.goal_yaw_en));
+            nh_->declare_parameter("super_planner.visual_process", rclcpp::ParameterValue(planner_cfg.visual_process));
+            nh_->declare_parameter("super_planner.frontend_in_known_free", rclcpp::ParameterValue(planner_cfg.frontend_in_known_free));
+            
+            nh_->declare_parameter("super_planner.planning_horizon", rclcpp::ParameterValue(planner_cfg.planning_horizon));
+            nh_->declare_parameter("super_planner.receding_dis", rclcpp::ParameterValue(planner_cfg.receding_dis));
+            nh_->declare_parameter("super_planner.sensing_horizon", rclcpp::ParameterValue(planner_cfg.sensing_horizon));
+            nh_->declare_parameter("super_planner.replan_forward_dt", rclcpp::ParameterValue(planner_cfg.replan_forward_dt));
+            nh_->declare_parameter("super_planner.yaw_mode", rclcpp::ParameterValue(planner_cfg.yaw_mode));
+            nh_->declare_parameter("super_planner.mpc_horizon", rclcpp::ParameterValue(planner_cfg.mpc_horizon));
+            nh_->declare_parameter("super_planner.safe_corridor_line_max_length", rclcpp::ParameterValue(planner_cfg.safe_corridor_line_max_length));
+            
+            // 走廊生成相关参数 (路径与YAML保持一致)
+            nh_->declare_parameter("super_planner.corridor_bound_dis", rclcpp::ParameterValue(planner_cfg.corridor_bound_dis));
+            nh_->declare_parameter("super_planner.corridor_line_max_length", rclcpp::ParameterValue(planner_cfg.corridor_line_max_length));
+            nh_->declare_parameter("super_planner.min_overlap_threshold", rclcpp::ParameterValue(planner_cfg.min_overlap_threshold));
+            nh_->declare_parameter("super_planner.robot_r", rclcpp::ParameterValue(planner_cfg.robot_r));
+            nh_->declare_parameter("super_planner.obs_skip_num", rclcpp::ParameterValue(planner_cfg.obs_skip_num));
+            nh_->declare_parameter("super_planner.iris_iter_num", rclcpp::ParameterValue(planner_cfg.iris_iter_num));
+            
+            // 虚拟高度参数 (路径与YAML保持一致)
+            nh_->declare_parameter("rog_map.virtual_ground_height", rclcpp::ParameterValue(planner_cfg.virtual_ground_height));
+            nh_->declare_parameter("rog_map.virtual_ceil_height", rclcpp::ParameterValue(planner_cfg.virtual_ceil_height));
+            
+            // Astar相关参数
+            nh_->declare_parameter("astar.heu_type", rclcpp::ParameterValue(planner_cfg.astar_heu_type));
+            nh_->declare_parameter("astar.allow_diag", rclcpp::ParameterValue(planner_cfg.astar_allow_diag));
+            nh_->declare_parameter("astar.debug_visualization_en", rclcpp::ParameterValue(planner_cfg.astar_debug_visualization_en));
             
             // 添加回调用于动态参数
             dyn_params_handler_ = nh_->add_on_set_parameters_callback(

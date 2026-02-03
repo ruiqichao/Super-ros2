@@ -42,6 +42,7 @@ find_package(nav_msgs REQUIRED)
 find_package(visualization_msgs REQUIRED)
 find_package(PCL REQUIRED)
 find_package(pcl_conversions REQUIRED)
+find_package(GTest REQUIRED)
 
 
 set(includes
@@ -145,6 +146,8 @@ target_link_libraries(test_dynamic_params PUBLIC
         super
         ${PCL_LIBRARIES}
         ${third_party_libs}
+        GTest::gtest
+        GTest::gtest_main
 )
 ament_target_dependencies(test_dynamic_params PUBLIC
         ${ros_libs}

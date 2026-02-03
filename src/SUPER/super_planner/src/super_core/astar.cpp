@@ -1,4 +1,3 @@
-
 /**
 * This file is part of SUPER
 *
@@ -41,7 +40,7 @@ namespace path_search {
                  rog_map::ROGMapROS::Ptr rm) : ros_ptr_(ros_ptr), map_ptr_(rm) {
         cfg_ = PathSearchConfig(cfg_path);
         cout << rog_map::GREEN << " -- [RM] Init Astar-map." << rog_map::RESET << endl;
-        
+
         // 初始化网格节点缓冲区
         int map_buffer_size = cfg_.map_voxel_num(0) * cfg_.map_voxel_num(1) * cfg_.map_voxel_num(2);
         grid_node_buffer_.resize(map_buffer_size);
@@ -49,10 +48,10 @@ namespace path_search {
             i = new GridNode;
             i->rounds = 0;
         }
-        
+
         cout << rog_map::BLUE << "\tmap index size: " << cfg_.map_size_i.transpose() << rog_map::RESET << endl;
         cout << rog_map::BLUE << "\tmap vox_num: " << cfg_.map_voxel_num.transpose() << rog_map::RESET << endl;
-        
+
         // 预先生成排序的邻域点列表
         int test_num = 100;
         for (int i = -test_num; i <= test_num; i++) {
@@ -86,7 +85,7 @@ namespace path_search {
         md_.goal_pt = goal_pt;
         md_.mission_rcv_WT = ros_ptr_->getSimTime();
         md_.searching_horizon = searching_horizon;
-        
+
         // 解析搜索标志
         md_.use_inf_map = flag & ON_INF_MAP;
         md_.use_prob_map = flag & ON_PROB_MAP;
@@ -96,29 +95,29 @@ namespace path_search {
         if (flag & DONT_USE_INF_NEIGHBOR) {
             md_.use_inf_neighbor = false;
         }
-        
+
         // 检查地图类型配置
         if ((md_.use_inf_map && md_.use_prob_map) ||
             (!md_.use_inf_map && !md_.use_prob_map)) {
             cout << YELLOW << " -- [A*] " << RET_CODE_STR[INIT_ERROR]
-                 << ": cannot use both inf map and prob map." << RESET << endl;
+                    << ": cannot use both inf map and prob map." << RESET << endl;
             return INIT_ERROR;
         }
-        
+
         // 检查未知区域处理方式
         if (md_.unknown_as_occ && md_.unknown_as_free) {
             cout << YELLOW << " -- [A*] " << RET_CODE_STR[INIT_ERROR]
-                 << ": cannot use both unknown_as_occupied and unknown_as_free." << RESET << endl;
+                    << ": cannot use both unknown_as_occupied and unknown_as_free." << RESET << endl;
             return INIT_ERROR;
         }
-        
+
         // 设置地图分辨率
         if (md_.use_prob_map) {
             md_.resolution = map_ptr_->getResolution();
         } else {
             md_.resolution = map_ptr_->getInfResolution();
         }
-        
+
         // 设置局部地图中心
         if (searching_horizon > 0) {
             md_.local_map_center_d = start_pt;
@@ -130,9 +129,9 @@ namespace path_search {
         posToGlobalIndex(md_.local_map_center_d, md_.local_map_center_id_g);
         md_.local_map_min_d = md_.local_map_center_d - md_.resolution * cfg_.map_size_i.cast<double>();
         md_.local_map_max_d = md_.local_map_center_d + md_.resolution * cfg_.map_size_i.cast<double>();;
-        
+
         // 可视化边界框
-        if (cfg_.visual_process||cfg_.debug_visualization_en) {
+        if (cfg_.visual_process || cfg_.debug_visualization_en) {
             ros_ptr_->vizAstarBoundingBox(md_.local_map_min_d, md_.local_map_max_d);
         }
 
@@ -364,8 +363,8 @@ namespace path_search {
                                                  0.3, 1);
                     }
                     cout << rog_map::RED <<
-                         " -- [A*] " << RET_CODE_STR[INIT_ERROR]
-                         << " : start point deeply occupied, cannot find feasible path.\n" << rog_map::RESET << endl;
+                            " -- [A*] " << RET_CODE_STR[INIT_ERROR]
+                            << " : start point deeply occupied, cannot find feasible path.\n" << rog_map::RESET << endl;
                     return INIT_ERROR;
                 }
             }
@@ -382,9 +381,9 @@ namespace path_search {
 
                 if (!map_ptr_->getNearestInfCellNot(OCCUPIED, local_end_pt, local_end_pt, 2.0)) {
                     ros_ptr_->error(
-                            " -- [A*] Error with: {}, Goal point [{}] deeply occupied, cannot find feasible path.",
-                            RET_CODE_STR[INIT_ERROR],
-                            local_end_pt.transpose());
+                        " -- [A*] Error with: {}, Goal point [{}] deeply occupied, cannot find feasible path.",
+                        RET_CODE_STR[INIT_ERROR],
+                        local_end_pt.transpose());
                     if (cfg_.visual_process || cfg_.debug_visualization_en) {
                         ros_ptr_->vizAstarPoints(local_end_pt, Color::Red(), "local_end_pt",
                                                  0.5,
@@ -403,7 +402,7 @@ namespace path_search {
             ros_ptr_->vizAstarPoints(local_end_pt, Color::Green(), "local_end_pt", 0.3,
                                      1);
         }
-        
+
         // 转换为索引
         rog_map::Vec3i start_idx, end_idx;
         posToGlobalIndex(local_start_pt, start_idx);
@@ -412,17 +411,17 @@ namespace path_search {
             ros_ptr_->vizAstarPoints(local_start_pt, Color::Orange(), "local_start_pt", 0.3, 1);
             ros_ptr_->vizAstarPoints(local_end_pt, Color::Green(), "local_end_pt", 0.3, 1);
         }
-        
+
         // 检查索引是否在局部地图内
         if (!insideLocalMap(start_idx) || !insideLocalMap(end_idx)) {
             cout << rog_map::RED << " -- [RM] Start or end point is out of local map, which should not happen." <<
-                 rog_map::RESET
-                 << endl;
+                    rog_map::RESET
+                    << endl;
             ros_ptr_->error(" -- [RM] Start [{}] or end point [{}] is out of local map, which should not happen.",
                             local_start_pt.transpose(),
                             local_end_pt.transpose()
-                            );
-            if(cfg_.visual_process || cfg_.debug_visualization_en) {
+            );
+            if (cfg_.visual_process || cfg_.debug_visualization_en) {
                 ros_ptr_->vizAstarPoints(local_start_pt, Color::Orange(), "local_start_pt", 0.3, 1);
                 ros_ptr_->vizAstarPoints(local_end_pt, Color::Green(), "local_end_pt", 0.3, 1);
             }
@@ -457,15 +456,15 @@ namespace path_search {
         // 可视化起点和终点
         if (cfg_.visual_process) {
             ros_ptr_->vizAstarPoints(
-                    start_pt,
-                    Color::Green(),
-                    "start_pt",
-                    0.3, 1);
+                start_pt,
+                Color::Green(),
+                "start_pt",
+                0.3, 1);
             ros_ptr_->vizAstarPoints(
-                    end_pt,
-                    Color::Blue(),
-                    "goal_pt",
-                    0.3, 1);
+                end_pt,
+                Color::Blue(),
+                "goal_pt",
+                0.3, 1);
         }
 
         // A*主循环
@@ -473,19 +472,19 @@ namespace path_search {
             num_iter++;
             current = open_set.top();
             open_set.pop();
-            
+
             // 可视化搜索过程
             if (cfg_.visual_process) {
                 rog_map::Vec3f local_pt;
                 globalIndexToPos(current->id_g, local_pt);
                 ros_ptr_->vizAstarPoints(
-                        local_pt,
-                        Color(Color::Pink(), 0.5),
-                        "astar_process",
-                        0.1);
+                    local_pt,
+                    Color(Color::Pink(), 0.5),
+                    "astar_process",
+                    0.1);
                 usleep(1000);
             }
-            
+
             // 检查是否到达目标
             if (current->id_g(0) == endPtr->id_g(0) &&
                 current->id_g(1) == endPtr->id_g(1) &&
@@ -576,8 +575,8 @@ namespace path_search {
                         neighborPtr = grid_node_buffer_[getLocalIndexHash(neighborIdx)];
                         if (neighborPtr == nullptr) {
                             cout << rog_map::RED << " -- [RM] neighborPtr is null, which should not happen." <<
-                                 rog_map::RESET
-                                 << endl;
+                                    rog_map::RESET
+                                    << endl;
                             continue;
                         }
                         neighborPtr->id_g = neighborIdx;
@@ -631,7 +630,7 @@ namespace path_search {
                 return TIME_OUT;
             }
         }
-        
+
         double time_2 = ros_ptr_->getSimTime();
         if ((time_2 - time_1) > time_out) {
             fmt::print(fg(fmt::color::indian_red), "Time consume in A star path finding is {} s, iter={}.\n",
@@ -687,7 +686,7 @@ namespace path_search {
         ++rounds_;
 
         posToGlobalIndex(md_.local_map_center_d, md_.local_map_center_id_g);
-        
+
         // 检查起点
         if (!insideLocalMap(start_pt) ||
             !map_ptr_->insideLocalMap(start_pt)) {
@@ -696,12 +695,12 @@ namespace path_search {
             return INIT_ERROR;
         }
         rog_map::Vec3f local_start_pt = start_pt;
-        
+
         // 寻找最近的非占用单元格
-        if (!map_ptr_->getNearestCellNot(OCCUPIED, start_pt, local_start_pt,3.0)) {
+        if (!map_ptr_->getNearestCellNot(OCCUPIED, start_pt, local_start_pt, 3.0)) {
             cout << rog_map::RED <<
-                 " -- [A*] " << RET_CODE_STR[INIT_ERROR]
-                 << " : escape start point deeply occupied, cannot find feasible path.\n" << rog_map::RESET << endl;
+                    " -- [A*] " << RET_CODE_STR[INIT_ERROR]
+                    << " : escape start point deeply occupied, cannot find feasible path.\n" << rog_map::RESET << endl;
             return INIT_ERROR;
         }
 
@@ -730,13 +729,13 @@ namespace path_search {
                                      0.05,
                                      1);
         }
-        
+
         // 逃逸搜索主循环
         while (!open_set.empty()) {
             num_iter++;
             current = open_set.top();
             open_set.pop();
-            
+
             if (cfg_.visual_process) {
                 rog_map::Vec3f local_pt;
                 globalIndexToPos(current->id_g, local_pt);
@@ -746,11 +745,11 @@ namespace path_search {
                                          0.05);
                 usleep(1000);
             }
-            
+
             rog_map::Vec3f cur_pos;
             globalIndexToPos(current->id_g, cur_pos);
             rog_map::GridType cur_inf_type = map_ptr_->getInfGridType(cur_pos);
-            
+
             // 检查是否到达自由空间（未知区域视为占用）
             if (md_.unknown_as_occ && cur_inf_type != OCCUPIED && cur_inf_type != UNKNOWN) {
                 retrievePath(current, node_path);
@@ -780,7 +779,7 @@ namespace path_search {
                         neighborIdx(1) = (current->id_g)(1) + dy;
                         neighborIdx(2) = (current->id_g)(2) + dz;
                         globalIndexToPos(neighborIdx, neighborPos);
-                        
+
                         if (!map_ptr_->insideLocalMap(neighborPos) ||
                             !insideLocalMap(neighborIdx)) {
                             continue;
@@ -805,7 +804,7 @@ namespace path_search {
                         neighborPtr = grid_node_buffer_[getLocalIndexHash(neighborIdx)];
                         if (neighborPtr == nullptr) {
                             cout << rog_map::RED << " -- [RM] neighborPtr is null, which should not happen" <<
-                                 rog_map::RESET << endl;
+                                    rog_map::RESET << endl;
                             continue;
                         }
                         neighborPtr->id_g = neighborIdx;
@@ -823,7 +822,7 @@ namespace path_search {
                         rog_map::Vec3f pos;
                         globalIndexToPos(neighborIdx, pos);
                         double heu_score = 0; // 逃逸搜索不使用启发式
-                        
+
                         if (!flag_explored) {
                             // 发现新节点
                             neighborPtr->state = GridNode::OPENSET;
@@ -846,7 +845,7 @@ namespace path_search {
                 return TIME_OUT;
             }
         }
-        
+
         double time_2 = ros_ptr_->getSimTime();
         if ((time_2 - time_1) > 0.1) {
             fmt::print(fg(fmt::color::indian_red), "Time consume in A star path finding is {} s, iter={}.\n",
@@ -863,8 +862,8 @@ namespace path_search {
      * @param src_id 源索引
      * @return 是否存在
      */
-    bool Astar::neighborHaveOne(const rog_map::GridType& type, const rog_map::Vec3i& src_id) {
-        for (const auto& nei : neighbor_list) {
+    bool Astar::neighborHaveOne(const rog_map::GridType &type, const rog_map::Vec3i &src_id) {
+        for (const auto &nei: neighbor_list) {
             rog_map::Vec3i nei_id = src_id + nei;
             if (!insideLocalMap(nei_id)) {
                 continue;
@@ -874,8 +873,7 @@ namespace path_search {
             rog_map::GridType nei_type;
             if (md_.use_inf_map) {
                 nei_type = map_ptr_->getInfGridType(nei_pos);
-            }
-            else {
+            } else {
                 nei_type = map_ptr_->getGridType(nei_pos);
             }
             if (nei_type == type) {

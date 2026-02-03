@@ -1,118 +1,115 @@
+#include <gtest/gtest.h>
 #include <rclcpp/rclcpp.hpp>
-#include <rcl_interfaces/msg/parameter.hpp>
-#include <rcl_interfaces/msg/parameter_value.hpp>
-#include <iostream>
+#include "super_core/super_planner.h"
+#include "ros_interface/ros2/fsm_ros2.hpp"
+#include "traj_opt/yaw_traj_config.h"
+#include "path_search/astar_config.h"
+#include "super_core/corridor_generator_config.h"
 
-/**
- * @brief 测试SUPER规划器动态参数功能
- * @note 该测试脚本用于验证动态参数更新功能是否正常工作
- */
-class DynamicParamTester : public rclcpp::Node
-{
-public:
-    DynamicParamTester() : Node("dynamic_param_tester")
-    {
-        // 创建参数客户端，连接到fsm_node
-        param_client_ = std::make_shared<rclcpp::AsyncParametersClient>(this, "fsm_node");
-        
-        // 等待参数服务可用
-        while (!param_client_->wait_for_service(std::chrono::seconds(1))) {
-            if (!rclcpp::ok()) {
-                RCLCPP_ERROR(this->get_logger(), "Interrupted while waiting for the service. Exiting.");
-                return;
-            }
-            RCLCPP_INFO(this->get_logger(), "Waiting for the fsm_node parameter service...");
+class DynamicParamTest : public ::testing::Test {
+protected:
+    void SetUp() override {
+        // 初始化ROS2节点用于测试
+        if (!rclcpp::ok()) {
+            rclcpp::init(0, nullptr);
         }
-        
-        RCLCPP_INFO(this->get_logger(), "Connected to fsm_node parameter service.");
-        
-        // 设置定时器来测试动态参数更新
-        timer_ = this->create_wall_timer(
-            std::chrono::seconds(5),
-            std::bind(&DynamicParamTester::testDynamicParams, this)
-        );
+
+        // 创建一个简单的节点用于参数测试
+        test_node_ = std::make_shared<rclcpp::Node>("test_dynamic_param_node");
     }
 
-private:
-    void testDynamicParams()
-    {
-        static int test_count = 0;
-        
-        if (test_count == 0) {
-            RCLCPP_INFO(this->get_logger(), "=== 开始测试动态参数更新功能 ===");
-            
-            // 测试更新max_vel参数
-            std::vector<rclcpp::Parameter> parameters;
-            parameters.push_back(rclcpp::Parameter("traj_opt.boundary.max_vel", 2.0));
-            parameters.push_back(rclcpp::Parameter("traj_opt.exp_traj.penna_vel", 2.0e+5));
-            
-            RCLCPP_INFO(this->get_logger(), "正在设置动态参数: max_vel=2.0, penna_vel=2.0e+5");
-            
-            auto future = param_client_->set_parameters(parameters);
-            future.wait();
-            
-            auto results = future.get();
-            for (auto & result : results) {
-                if (result.successful) {
-                    RCLCPP_INFO(this->get_logger(), "参数设置成功!");
-                } else {
-                    RCLCPP_ERROR(this->get_logger(), "参数设置失败: %s", result.reason.c_str());
-                }
-            }
-        } else if (test_count == 1) {
-            // 测试更新其他参数
-            std::vector<rclcpp::Parameter> parameters;
-            parameters.push_back(rclcpp::Parameter("traj_opt.boundary.max_acc", 8.0));
-            parameters.push_back(rclcpp::Parameter("traj_opt.exp_traj.penna_acc", 2.0e+5));
-            
-            RCLCPP_INFO(this->get_logger(), "正在设置动态参数: max_acc=8.0, penna_acc=2.0e+5");
-            
-            auto future = param_client_->set_parameters(parameters);
-            future.wait();
-            
-            auto results = future.get();
-            for (auto & result : results) {
-                if (result.successful) {
-                    RCLCPP_INFO(this->get_logger(), "参数设置成功!");
-                } else {
-                    RCLCPP_ERROR(this->get_logger(), "参数设置失败: %s", result.reason.c_str());
-                }
-            }
-        } else if (test_count == 2) {
-            // 测试获取参数值
-            RCLCPP_INFO(this->get_logger(), "正在获取参数值...");
-            
-            auto future = param_client_->get_parameters({
-                "traj_opt.boundary.max_vel",
-                "traj_opt.boundary.max_acc"
-            });
-            future.wait();
-            
-            auto values = future.get();
-            for (auto & value : values) {
-                RCLCPP_INFO(this->get_logger(), "参数 %s = %f", 
-                           value.get_name().c_str(), 
-                           value.as_double());
-            }
-            
-            RCLCPP_INFO(this->get_logger(), "=== 动态参数测试完成 ===");
-            timer_->cancel();
+    void TearDown() override {
+        test_node_.reset();
+        if (rclcpp::ok()) {
+            rclcpp::shutdown();
         }
-        
-        test_count++;
     }
 
-    rclcpp::AsyncParametersClient::SharedPtr param_client_;
-    rclcpp::TimerBase::SharedPtr timer_;
+    rclcpp::Node::SharedPtr test_node_;
 };
 
-int main(int argc, char * argv[])
-{
-    rclcpp::init(argc, argv);
-    
-    auto node = std::make_shared<DynamicParamTester>();
-    
-    rclcpp::spin(node);
-    rclcpp::shutdown();
-    return 0;
+TEST_F(DynamicParamTest, YawTrajConfigInitialization) {
+    traj_opt::YawTrajConfig config;
+
+    // 测试默认值
+    EXPECT_NEAR(config.yaw_dot_max, 3.14, 1e-6);
+
+    // 测试参数更新
+    std::vector<rclcpp::Parameter> params = {
+        rclcpp::Parameter("traj_opt.yaw_traj.yaw_dot_max", 2.0)
+    };
+
+    auto result = config.dynamicParametersCallback(params);
+    EXPECT_TRUE(result.successful);
+
+    EXPECT_NEAR(config.yaw_dot_max, 2.0, 1e-6);
+}
+
+TEST_F(DynamicParamTest, AstarConfigInitialization) {
+    path_search::AstarConfig config;
+
+    // 测试默认值
+    EXPECT_EQ(config.heu_type, 0);
+    EXPECT_FALSE(config.allow_diag);
+    EXPECT_FALSE(config.debug_visualization_en);
+
+    // 测试参数更新
+    std::vector<rclcpp::Parameter> params = {
+        rclcpp::Parameter("astar.heu_type", 2),
+        rclcpp::Parameter("astar.allow_diag", true),
+        rclcpp::Parameter("astar.debug_visualization_en", true)
+    };
+
+    auto result = config.dynamicParametersCallback(params);
+    EXPECT_TRUE(result.successful);
+
+    EXPECT_EQ(config.heu_type, 2);
+    EXPECT_TRUE(config.allow_diag);
+    EXPECT_TRUE(config.debug_visualization_en);
+}
+
+TEST_F(DynamicParamTest, CorridorGenConfigInitialization) {
+    super_planner::CorridorGenConfig config;
+
+    // 测试默认值
+    EXPECT_NEAR(config.bound_dis, 3.0, 1e-6);
+    EXPECT_NEAR(config.robot_r, 0.3, 1e-6);
+    EXPECT_EQ(config.iris_iter_num, 1);
+
+    // 测试参数更新
+    std::vector<rclcpp::Parameter> params = {
+        rclcpp::Parameter("super_planner.corridor_bound_dis", 5.0),
+        rclcpp::Parameter("super_planner.robot_r", 0.5),
+        rclcpp::Parameter("super_planner.iris_iter_num", 3)
+    };
+
+    auto result = config.dynamicParametersCallback(params);
+    EXPECT_TRUE(result.successful);
+
+    EXPECT_NEAR(config.bound_dis, 5.0, 1e-6);
+    EXPECT_NEAR(config.robot_r, 0.5, 1e-6);
+    EXPECT_EQ(config.iris_iter_num, 3);
+}
+
+TEST_F(DynamicParamTest, ConfigMutexAccess) {
+    traj_opt::YawTrajConfig yaw_config;
+    path_search::AstarConfig astar_config;
+    super_planner::CorridorGenConfig corridor_config;
+
+    // 测试互斥锁访问
+    std::mutex &yaw_mutex = yaw_config.getConfigMutex();
+    std::mutex &astar_mutex = astar_config.getConfigMutex();
+    std::mutex &corridor_mutex = corridor_config.getConfigMutex();
+
+    // 尝试锁定互斥锁
+    EXPECT_NO_THROW({
+        std::lock_guard<std::mutex> lock1(yaw_mutex);
+        std::lock_guard<std::mutex> lock2(astar_mutex);
+        std::lock_guard<std::mutex> lock3(corridor_mutex);
+        });
+}
+
+int main(int argc, char **argv) {
+    ::testing::InitGoogleTest(&argc, argv);
+    return RUN_ALL_TESTS();
 }

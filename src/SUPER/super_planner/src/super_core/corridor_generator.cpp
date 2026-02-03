@@ -30,7 +30,7 @@ namespace super_planner {
     CorridorGenerator::CorridorGenerator(const ros_interface::RosInterface::Ptr &ros_ptr,
                                          const rog_map::ROGMapROS::Ptr &map_ptr, const double bound_dis,
                                          const double seed_line_max_dis, const double min_overlap_threshold,
-                                         const double virtual_groud_height, const double virtual_ceil_height,
+                                         const double virtual_ground_height, const double virtual_ceil_height,
                                          const double robot_r, const int box_search_skip_num, const int iris_iter_num)
             : ros_ptr_(ros_ptr), map_ptr_(map_ptr) {
         ciri_ = std::make_shared<CIRI>(ros_ptr_);
@@ -42,7 +42,7 @@ namespace super_planner {
         box_search_skip_num_ = box_search_skip_num;
         iris_iter_num_ = iris_iter_num;
         virtual_ceil_height_ = virtual_ceil_height - robot_r;
-        virtual_groud_height_ = virtual_groud_height + robot_r;
+        virtual_ground_height_ = virtual_ground_height + robot_r;
 //        failed_traj_log.open(DEBUG_FILE_DIR("sfc.csv"), std::ios::out | std::ios::trunc);
     }
 
@@ -82,7 +82,7 @@ namespace super_planner {
         first_id = 0;
 
         // 找到第一个非占用点
-        while(first_id < path.size() && map_ptr_->isOccupiedInflate(path[first_id])) {
+        while(first_id < (int)path.size() && map_ptr_->isOccupiedInflate(path[first_id])) {
             first_id++;
         }
 
@@ -97,7 +97,7 @@ namespace super_planner {
         while (cnt_loop++ < max_loop) {
             second_id = first_id;
             // 寻找从first_id到路径上最远的自由线段
-            for (int j = first_id + 1; j < path.size(); j++) {
+            for (int j = first_id + 1; j < (int)path.size(); j++) {
                 bool reach_segment = false;
                 if (!map_ptr_->isLineFree(path[first_id], path[j], seed_line_max_length_,
                                           line_seed_neighbor_list)) {
@@ -114,7 +114,7 @@ namespace super_planner {
             }
 
             // 如果second_id和first_id相同且不是路径的最后一个点，则向前移动一个点
-            if (second_id == first_id && second_id + 1 < path.size()) {
+            if (second_id == first_id && second_id + 1 < (int)path.size()) {
                 second_id += 1;
             }
 
@@ -195,7 +195,7 @@ namespace super_planner {
             }
 
             sfcs.push_back(temp_poly);
-            if (second_id == path.size() - 1) {
+            if (second_id == (int)path.size() - 1) {
                 break;
             }
             first_id = second_id;
@@ -228,7 +228,7 @@ namespace super_planner {
         box_max = p1.cwiseMax(p2);
         box_min -= Vec3f(bound_dis_, bound_dis_, bound_dis_);
         box_max += Vec3f(bound_dis_, bound_dis_, bound_dis_);
-//        box_min.z() = std::max(box_min.z(), virtual_groud_height_);
+//        box_min.z() = std::max(box_min.z(), virtual_ground_height_);
 //        box_max.z() = std::min(box_max.z(), virtual_ceil_height_);
     }
 

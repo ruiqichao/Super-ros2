@@ -8,16 +8,16 @@ sudo apt update
 # 安装ROS2 Jazzy基础依赖
 echo "Installing ROS2 Jazzy base dependencies..."
 sudo apt install -y \
-    ros-jazzy-desktop \
-    ros-jazzy-rclcpp \
-    ros-jazzy-std-msgs \
-    ros-jazzy-sensor-msgs \
-    ros-jazzy-geometry-msgs \
-    ros-jazzy-nav-msgs \
-    ros-jazzy-tf2-ros \
-    ros-jazzy-visualization-msgs \
-    ros-jazzy-pcl-conversions \
-    ros-jazzy-mavros-msgs \
+    ros-humble-desktop \
+    ros-humble-rclcpp \
+    ros-humble-sensor-msgs \
+    ros-humble-geometry-msgs \
+    ros-humble-nav-msgs \
+    ros-humble-tf2-ros \
+    ros-humble-visualization-msgs \
+    ros-humble-pcl-conversions \
+    ros-humble-mavros-msgs \
+    python3-colcon-common-extensions \
     python3-colcon-common-extensions \
 
     python3-vcstool

@@ -32,6 +32,7 @@
 #include "path_search/config.hpp"
 #include "utils/header/type_utils.hpp"
 #include <ros_interface/ros_interface.hpp>
+#include "path_search/astar_config.h"  // 新增动态参数配置头文件
 
 
 namespace path_search {
@@ -82,6 +83,7 @@ namespace path_search {
         ros_interface::RosInterface::Ptr ros_ptr_;
 
         PathSearchConfig cfg_;
+        AstarConfig dyn_config_;  // 动态参数配置
         const double tie_breaker_ = 1.0 + 1e-5;
         rog_map::vec_Vec3i sorted_pts;
         rog_map::vec_Vec3i neighbor_list;
@@ -145,6 +147,28 @@ namespace path_search {
         typedef std::shared_ptr<Astar> Ptr;
 
         void setVisualProcessEn(const bool &en);
+
+        /**
+         * @brief 获取动态参数配置
+         * @return AstarConfig的引用
+         * @note 用于外部访问和修改动态参数
+         */
+        AstarConfig& getDynamicConfig() {
+            return dyn_config_;
+        }
+
+        /**
+         * @brief 更新优化器配置
+         * @note 从动态配置中更新内部参数
+         */
+        void updateOptimizerConfig() {
+            // 同步启发式类型
+            cfg_.heu_type = dyn_config_.heu_type;
+            // 同步对角线允许设置
+            cfg_.allow_diag = dyn_config_.allow_diag;
+            // 同步调试可视化设置
+            cfg_.debug_visualization_en = dyn_config_.debug_visualization_en;
+        }
 
         void setFineInfNeighbors(const int & neighbor_step);
 

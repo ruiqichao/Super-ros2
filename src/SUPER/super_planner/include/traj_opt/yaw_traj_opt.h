@@ -28,10 +28,12 @@
 
 #include "utils/geometry/geometry_utils.h"
 #include "traj_opt/config.hpp"
+#include "traj_opt/yaw_traj_config.h"  // 新增动态参数配置头文件
 #include <utils/optimization/minco.h>
 
 #include <utils/header/type_utils.hpp>
 #include <super_utils/scope_timer.hpp>
+#include <mutex>  // 添加互斥锁支持
 
 namespace traj_opt {
     using namespace geometry_utils;
@@ -45,12 +47,32 @@ namespace traj_opt {
     private:
         bool free_goal_{false};
         double yaw_dot_max_{10};
+        YawTrajConfig dyn_config_;  // 动态参数配置
+        mutable std::mutex yaw_opt_mutex_;  // 用于更新yaw_dot_max的互斥锁
 
     public:
 
         explicit YawTrajOpt(const double &_yaw_dot_max);
 
         typedef std::shared_ptr<YawTrajOpt> Ptr;
+
+        /**
+         * @brief 获取动态参数配置
+         * @return YawTrajConfig的引用
+         * @note 用于外部访问和修改动态参数
+         */
+        YawTrajConfig& getDynamicConfig() {
+            return dyn_config_;
+        }
+
+        /**
+         * @brief 更新优化器配置
+         * @note 从动态配置中更新内部参数
+         */
+        void updateOptimizerConfig() {
+            std::lock_guard<std::mutex> lock(yaw_opt_mutex_);
+            yaw_dot_max_ = dyn_config_.yaw_dot_max;
+        }
 
         void getYawTimeAllocation(const double &duration, VecDf &times) const ;
 

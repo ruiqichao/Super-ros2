@@ -70,9 +70,16 @@ namespace super_planner {
         double safe_corridor_line_max_length;  // 安全走廊线段最大长度
         double sensing_horizon;                // 传感器探测范围，用于FOV裁剪
 
-        // 规划参数
+        // Astar 路径搜索参数
+        int astar_heu_type;                   // Astar 启发式类型
+        bool astar_allow_diag;                // 是否允许对角线移动
+        bool astar_debug_visualization_en;    // 调试可视化开关
+
+        // 走廊生成参数
         int obs_skip_num;                      // 障碍物跳过数量
         double corridor_bound_dis, corridor_line_max_length;  // 走廊边界距离和线段最大长度
+        double min_overlap_threshold;          // 最小重叠阈值
+        double virtual_ground_height, virtual_ceil_height; // 虚拟地面和天花板高度
         double replan_forward_dt;              // 重规划前向时间步长
         double sample_traj_dt;                 // 轨迹采样时间步长
         double robot_r;                        // 机器人半径
@@ -111,6 +118,11 @@ namespace super_planner {
             loader.LoadParam("super_planner/use_fov_cut", use_fov_cut, false);
             loader.LoadParam("super_planner/frontend_in_known_free", frontend_in_known_free, false);
             
+            // 加载 Astar 相关参数
+            loader.LoadParam("astar/heu_type", astar_heu_type, 2);
+            loader.LoadParam("astar/allow_diag", astar_allow_diag, true);
+            loader.LoadParam("astar/debug_visualization_en", astar_debug_visualization_en, false);
+            
             // 加载数值类型参数
             loader.LoadParam("super_planner/safe_corridor_line_max_length", safe_corridor_line_max_length, 3.0);
             loader.LoadParam("super_planner/sensing_horizon", sensing_horizon, 3.0);
@@ -118,6 +130,7 @@ namespace super_planner {
             loader.LoadParam("super_planner/replan_forward_dt", replan_forward_dt, 0.3);
             loader.LoadParam("super_planner/corridor_bound_dis", corridor_bound_dis, 3.0);
             loader.LoadParam("super_planner/corridor_line_max_length", corridor_line_max_length, 3.0);
+            loader.LoadParam("super_planner/min_overlap_threshold", min_overlap_threshold, 0.1);
             loader.LoadParam("super_planner/planning_horizon", planning_horizon, 10.0);
             loader.LoadParam("super_planner/receding_dis", receding_dis, 5.0);
             loader.LoadParam("super_planner/robot_r", robot_r, 0.3);
@@ -125,6 +138,10 @@ namespace super_planner {
             loader.LoadParam("super_planner/yaw_mode", yaw_mode, 1);
             loader.LoadParam("super_planner/mpc_horizon", mpc_horizon, 1);
             loader.LoadParam("super_planner/yaw_dot_max", yaw_dot_max, 3.14);
+
+            // 加载虚拟高度参数 (通常在 rog_map 中定义)
+            loader.LoadParam("rog_map/virtual_ground_height", virtual_ground_height, -0.1);
+            loader.LoadParam("rog_map/virtual_ceil_height", virtual_ceil_height, 3.5);
 
             loader.LoadParam("rog_map/resolution", resolution, 0.01, true);
 
@@ -165,13 +182,23 @@ namespace super_planner {
             node->get_parameter_or("super_planner.visual_process", visual_process, visual_process);
             node->get_parameter_or("super_planner.frontend_in_known_free", frontend_in_known_free, frontend_in_known_free);
             
-            // 更新super_planner数值类型参数
+            // 更新 Astar 参数
+            node->get_parameter_or("astar.heu_type", astar_heu_type, astar_heu_type);
+            node->get_parameter_or("astar.allow_diag", astar_allow_diag, astar_allow_diag);
+            node->get_parameter_or("astar.debug_visualization_en", astar_debug_visualization_en, astar_debug_visualization_en);
+            
+            // 更新虚拟高度参数 (从 rog_map 命名空间获取)
+            node->get_parameter_or("rog_map.virtual_ground_height", virtual_ground_height, virtual_ground_height);
+            node->get_parameter_or("rog_map.virtual_ceil_height", virtual_ceil_height, virtual_ceil_height);
+            
+            // 更新 super_planner 数值类型参数
             node->get_parameter_or("super_planner.safe_corridor_line_max_length", safe_corridor_line_max_length, safe_corridor_line_max_length);
             node->get_parameter_or("super_planner.sensing_horizon", sensing_horizon, sensing_horizon);
             node->get_parameter_or("super_planner.obs_skip_num", obs_skip_num, obs_skip_num);
             node->get_parameter_or("super_planner.replan_forward_dt", replan_forward_dt, replan_forward_dt);
             node->get_parameter_or("super_planner.corridor_bound_dis", corridor_bound_dis, corridor_bound_dis);
             node->get_parameter_or("super_planner.corridor_line_max_length", corridor_line_max_length, corridor_line_max_length);
+            node->get_parameter_or("super_planner.min_overlap_threshold", min_overlap_threshold, min_overlap_threshold);
             node->get_parameter_or("super_planner.planning_horizon", planning_horizon, planning_horizon);
             node->get_parameter_or("super_planner.receding_dis", receding_dis, receding_dis);
             node->get_parameter_or("super_planner.robot_r", robot_r, robot_r);

@@ -34,7 +34,7 @@ namespace super_planner {
             (const std::string &cfg_path,
              const ros_interface::RosInterface::Ptr &ros_ptr,
              const rog_map::ROGMapROS::Ptr &map_ptr
-            ) : cfg_(Config(cfg_path)), ros_ptr_(ros_ptr), map_ptr_(map_ptr) {
+            ) : cfg_(Config(cfg_path)), map_ptr_(map_ptr), ros_ptr_(ros_ptr) {
 
         // 设置ROS接口的分辨率和可视化参数
         ros_ptr_->setResolution(cfg_.resolution);

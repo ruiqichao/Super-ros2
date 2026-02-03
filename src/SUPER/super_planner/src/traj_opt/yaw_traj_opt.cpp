@@ -27,7 +27,12 @@ using namespace geometry_utils;
 namespace traj_opt {
     using namespace color_text;
     void YawTrajOpt::getYawTimeAllocation(const double &duration, VecDf &times) const {
-        double interp_dt = M_PI / yaw_dot_max_;
+        double current_yaw_dot_max;
+        {
+            std::lock_guard<std::mutex> lock(yaw_opt_mutex_);
+            current_yaw_dot_max = yaw_dot_max_;
+        }
+        double interp_dt = M_PI / current_yaw_dot_max;
         if (duration < interp_dt * 2) {
             /// if the duration less than 2 interp, then no waypoint need.
             times.resize(1);
@@ -97,6 +102,8 @@ namespace traj_opt {
     }
 
     YawTrajOpt::YawTrajOpt(const double &_yaw_dot_max) : yaw_dot_max_(_yaw_dot_max) {
+        // 初始化动态配置参数
+        dyn_config_.yaw_dot_max = _yaw_dot_max;
     }
 
     bool YawTrajOpt::optimize(const Vec4f &istate_in,
@@ -168,7 +175,7 @@ namespace traj_opt {
                 break;
             }
             default: {
-                cout << "Unsupported order for yaw trajectory optimization." << endl;
+                std::cout << "Unsupported order for yaw trajectory optimization." << std::endl;
                 return false;
             }
         }
@@ -184,8 +191,13 @@ namespace traj_opt {
 //
 //            yaw_traj.printProfile();
         double max_yaw_rate = yaw_traj.getMaxVelRate();
-        if (max_yaw_rate > yaw_dot_max_ + 2.0) {
-            cout << YELLOW << " Yaw rate too large, " << max_yaw_rate << RESET << endl;
+        double current_yaw_dot_max;
+        {
+            std::lock_guard<std::mutex> lock(yaw_opt_mutex_);
+            current_yaw_dot_max = yaw_dot_max_;
+        }
+        if (max_yaw_rate > current_yaw_dot_max + 2.0) {
+            std::cout << YELLOW << " Yaw rate too large, " << max_yaw_rate << RESET << std::endl;
 //                return false;
         }
         out_traj = yaw_traj;

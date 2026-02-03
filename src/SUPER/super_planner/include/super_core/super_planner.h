@@ -45,6 +45,8 @@
 #include "traj_opt/yaw_traj_opt.h"
 #include "super_core/super_ret_code.hpp"
 #include "utils/header/fmt_eigen.hpp"
+#include "path_search/astar_config.h"
+#include "super_core/corridor_generator_config.h"
 
 #include <super_core/log_utils.hpp>
 #include <data_structure/exp_traj.h>
@@ -169,6 +171,14 @@ namespace super_planner {
         }
 
         /**
+         * @brief 获取规划器配置对象
+         * @return Config对象的常量引用
+         */
+        const super_planner::Config& getConfig() const {
+            return cfg_;
+        }
+
+        /**
          * @brief 获取轨迹优化器的动态参数配置
          * @return ExpTrajOpt的动态参数配置引用
          * @note 用于外部访问和修改动态参数
@@ -187,6 +197,33 @@ namespace super_planner {
         }
 
         /**
+         * @brief 获取偏航轨迹优化器的动态参数配置
+         * @return YawTrajOpt的动态参数配置引用
+         * @note 用于外部访问和修改偏航轨迹优化器的动态参数
+         */
+        traj_opt::YawTrajConfig& getYawTrajOptDynamicConfig() {
+            return yaw_traj_opt_->getDynamicConfig();
+        }
+
+        /**
+         * @brief 获取Astar路径搜索器的动态参数配置
+         * @return Astar的动态参数配置引用
+         * @note 用于外部访问和修改Astar的动态参数
+         */
+        path_search::AstarConfig& getAstarDynamicConfig() {
+            return astar_ptr_->getDynamicConfig();
+        }
+
+        /**
+         * @brief 获取走廊生成器的动态参数配置
+         * @return CorridorGenerator的动态参数配置引用
+         * @note 用于外部访问和修改走廊生成器的动态参数
+         */
+        super_planner::CorridorGenConfig& getCorridorGenDynamicConfig() {
+            return cg_ptr_->getDynamicConfig();
+        }
+
+        /**
          * @brief 获取探索轨迹优化器指针
          * @return ExpTrajOpt的指针
          * @note 用于直接访问优化器对象
@@ -202,6 +239,33 @@ namespace super_planner {
          */
         traj_opt::BackupTrajOpt::Ptr getBackupTrajOpt() {
             return back_traj_opt_;
+        }
+
+        /**
+         * @brief 获取偏航轨迹优化器指针
+         * @return YawTrajOpt的指针
+         * @note 用于直接访问优化器对象
+         */
+        traj_opt::YawTrajOpt::Ptr getYawTrajOpt() {
+            return yaw_traj_opt_;
+        }
+
+        /**
+         * @brief 获取Astar路径搜索器指针
+         * @return Astar的指针
+         * @note 用于直接访问Astar对象
+         */
+        path_search::Astar::Ptr getAstar() {
+            return astar_ptr_;
+        }
+
+        /**
+         * @brief 获取走廊生成器指针
+         * @return CorridorGenerator的指针
+         * @note 用于直接访问走廊生成器对象
+         */
+        CorridorGenerator::Ptr getCorridorGenerator() {
+            return cg_ptr_;
         }
 
         double ft{0}, bt{0};
@@ -291,6 +355,42 @@ namespace super_planner {
                 back_dyn_cfg.pos_constraint_type = cfg_.back_traj_cfg.pos_constraint_type;
                 back_dyn_cfg.piece_num = cfg_.back_traj_cfg.piece_num;
                 back_dyn_cfg.block_energy_cost = cfg_.back_traj_cfg.block_energy_cost;
+            }
+            
+            // 同时更新YawTrajOpt中的动态参数（从cfg_同步到优化器）
+            if (yaw_traj_opt_) {
+                auto& yaw_dyn_cfg = yaw_traj_opt_->getDynamicConfig();
+                {
+                    std::lock_guard<std::mutex> l(yaw_dyn_cfg.getConfigMutex());
+                    yaw_dyn_cfg.yaw_dot_max = cfg_.yaw_dot_max;
+                }
+            }
+            
+            // 同时更新Astar中的动态参数（从cfg_同步到搜索器）
+            if (astar_ptr_) {
+                auto& astar_dyn_cfg = astar_ptr_->getDynamicConfig();
+                {
+                    std::lock_guard<std::mutex> l(astar_dyn_cfg.getConfigMutex());
+                    astar_dyn_cfg.heu_type = cfg_.astar_heu_type;
+                    astar_dyn_cfg.allow_diag = cfg_.astar_allow_diag;
+                    astar_dyn_cfg.debug_visualization_en = cfg_.astar_debug_visualization_en;
+                }
+            }
+            
+            // 同时更新CorridorGenerator中的动态参数（从cfg_同步到生成器）
+            if (cg_ptr_) {
+                auto& cg_dyn_cfg = cg_ptr_->getDynamicConfig();
+                {
+                    std::lock_guard<std::mutex> l(cg_dyn_cfg.getConfigMutex());
+                    cg_dyn_cfg.bound_dis = cfg_.corridor_bound_dis;
+                    cg_dyn_cfg.seed_line_max_length = cfg_.corridor_line_max_length;
+                    cg_dyn_cfg.min_overlap_threshold = cfg_.min_overlap_threshold;
+                    cg_dyn_cfg.robot_r = cfg_.robot_r;
+                    cg_dyn_cfg.box_search_skip_num = cfg_.obs_skip_num;
+                    cg_dyn_cfg.iris_iter_num = cfg_.iris_iter_num;
+                    cg_dyn_cfg.virtual_ground_height = cfg_.virtual_ground_height;
+                    cg_dyn_cfg.virtual_ceil_height = cfg_.virtual_ceil_height;
+                }
             }
         }
     };

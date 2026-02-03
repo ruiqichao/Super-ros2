@@ -35,6 +35,10 @@
 #include <utils/header/fmt_eigen.hpp>
 
 #include <ros_interface/ros_interface.hpp>
+#include <rclcpp/rclcpp.hpp>
+#include <rcl_interfaces/msg/parameter_descriptor.hpp>
+#include <rcl_interfaces/msg/set_parameters_result.hpp>
+#include "super_core/corridor_generator_config.h"  // 新增动态参数配置头文件
 
 
 
@@ -62,12 +66,14 @@ namespace super_planner {
         double robot_r_;  // 机器人半径
         int box_search_skip_num_;  // 包围盒搜索跳过数量
         int iris_iter_num_;  // IRIS迭代次数
-        double virtual_groud_height_ = 0.0;  // 虚拟地面高度
+        double virtual_ground_height_ = 0.0;  // 虚拟地面高度
         double virtual_ceil_height_ = 0.0;  // 虚拟天花板高度
         rog_map::ROGMapROS::Ptr map_ptr_;  // ROG地图指针
         vec_E<Vec3i> line_seed_neighbor_list;  // 线段种子邻居列表
         CIRI::Ptr ciri_;  // CIRI算法指针
         std::ofstream failed_traj_log;  // 失败轨迹日志文件流
+        CorridorGenConfig dyn_config_;  // 动态参数配置
+        mutable std::mutex corridor_gen_mutex_;  // 用于更新参数的互斥锁
 
         vec_Vec3f latest_pc;  // 最新点云数据
 
@@ -91,7 +97,7 @@ namespace super_planner {
          * @param bound_dis 边界距离参数
          * @param seed_line_max_dis 种子线段最大距离
          * @param min_overlap_threshold 最小重叠阈值
-         * @param virtual_groud_height 虚拟地面高度
+         * @param virtual_ground_height 虚拟地面高度
          * @param virtual_ceil_height 虚拟天花板高度
          * @param robot_r 机器人半径
          * @param box_search_skip_num 包围盒搜索跳过数量
@@ -102,7 +108,7 @@ namespace super_planner {
                           const double bound_dis,
                           const double seed_line_max_dis,
                           const double min_overlap_threshold,
-                          const double virtual_groud_height,
+                          const double virtual_ground_height,
                           const double virtual_ceil_height,
                           const double robot_r,
                           const int box_search_skip_num,
@@ -117,6 +123,31 @@ namespace super_planner {
         void SetLineNeighborList(const vec_E<Vec3i> &line_seed_neighbor_list);
 
         typedef std::shared_ptr<CorridorGenerator> Ptr;
+
+        /**
+         * @brief 获取动态参数配置
+         * @return CorridorGenConfig的引用
+         * @note 用于外部访问和修改动态参数
+         */
+        CorridorGenConfig& getDynamicConfig() {
+            return dyn_config_;
+        }
+
+        /**
+         * @brief 更新优化器配置
+         * @note 从动态配置中更新内部参数
+         */
+        void updateOptimizerConfig() {
+            std::lock_guard<std::mutex> lock(corridor_gen_mutex_);
+            bound_dis_ = dyn_config_.bound_dis;
+            seed_line_max_length_ = dyn_config_.seed_line_max_length;
+            min_overlap_threshold_ = dyn_config_.min_overlap_threshold;
+            robot_r_ = dyn_config_.robot_r;
+            box_search_skip_num_ = dyn_config_.box_search_skip_num;
+            iris_iter_num_ = dyn_config_.iris_iter_num;
+            virtual_ground_height_ = dyn_config_.virtual_ground_height;
+            virtual_ceil_height_ = dyn_config_.virtual_ceil_height;
+        }
 
         /**
          * @brief 在给定路径上搜索凸多面体
