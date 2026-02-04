@@ -109,7 +109,7 @@ namespace super_planner {
             
             // 加载布尔类型参数
             loader.LoadParam("super_planner/print_log", print_log, false);
-            loader.LoadParam("super_planner/detailed_log_en", detailed_log_en, false);
+            loader.LoadParam("super_planner/detailed_log_en", detailed_log_en, true);
             loader.LoadParam("super_planner/visualization_en", visualization_en, false);
             loader.LoadParam("super_planner/backup_traj_en", backup_traj_en, false);
             loader.LoadParam("super_planner/goal_vel_en", goal_vel_en, false);
@@ -174,7 +174,6 @@ namespace super_planner {
          */
         void updateRuntimeParams(rclcpp::Node::SharedPtr node) {
             // 更新super_planner布尔类型参数
-            node->get_parameter_or("super_planner.backup_traj_en", backup_traj_en, backup_traj_en);
             node->get_parameter_or("super_planner.use_fov_cut", use_fov_cut, use_fov_cut);
             node->get_parameter_or("super_planner.print_log", print_log, print_log);
             node->get_parameter_or("super_planner.goal_vel_en", goal_vel_en, goal_vel_en);
@@ -211,6 +210,10 @@ namespace super_planner {
             node->get_parameter_or("traj_opt.boundary.max_vel", exp_traj_cfg.max_vel, exp_traj_cfg.max_vel);
             node->get_parameter_or("traj_opt.boundary.max_acc", exp_traj_cfg.max_acc, exp_traj_cfg.max_acc);
             node->get_parameter_or("traj_opt.boundary.max_jerk", exp_traj_cfg.max_jerk, exp_traj_cfg.max_jerk);
+            node->get_parameter_or("traj_opt.boundary.max_omg", exp_traj_cfg.max_omg, exp_traj_cfg.max_omg);
+            node->get_parameter_or("traj_opt.boundary.max_acc_thr", exp_traj_cfg.max_acc_thr, exp_traj_cfg.max_acc_thr);
+            node->get_parameter_or("traj_opt.boundary.min_acc_thr", exp_traj_cfg.min_acc_thr, exp_traj_cfg.min_acc_thr);
+            node->get_parameter_or("traj_opt.boundary.penna_margin", exp_traj_cfg.penna_margin, exp_traj_cfg.penna_margin);
             
             // 更新探索轨迹优化算法配置参数
             node->get_parameter_or("traj_opt.exp_traj.pos_constraint_type", exp_traj_cfg.pos_constraint_type, exp_traj_cfg.pos_constraint_type);
@@ -227,6 +230,19 @@ namespace super_planner {
             node->get_parameter_or("traj_opt.exp_traj.penna_thr", exp_traj_cfg.penna_thr, exp_traj_cfg.penna_thr);
             node->get_parameter_or("traj_opt.exp_traj.opt_accuracy", exp_traj_cfg.opt_accuracy, exp_traj_cfg.opt_accuracy);
             node->get_parameter_or("traj_opt.exp_traj.smooth_eps", exp_traj_cfg.smooth_eps, exp_traj_cfg.smooth_eps);
+            
+            // 更新轨迹优化平坦性参数
+            node->get_parameter_or("traj_opt.flatness.mass", exp_traj_cfg.mass, exp_traj_cfg.mass);
+            node->get_parameter_or("traj_opt.flatness.dh", exp_traj_cfg.dh, exp_traj_cfg.dh);
+            node->get_parameter_or("traj_opt.flatness.dv", exp_traj_cfg.dv, exp_traj_cfg.dv);
+            node->get_parameter_or("traj_opt.flatness.grav", exp_traj_cfg.grav, exp_traj_cfg.grav);
+            node->get_parameter_or("traj_opt.flatness.cp", exp_traj_cfg.cp, exp_traj_cfg.cp);
+            node->get_parameter_or("traj_opt.flatness.v_eps", exp_traj_cfg.v_eps, exp_traj_cfg.v_eps);
+            
+            // 重新初始化平坦性映射
+            exp_traj_cfg.quadrotot_flatness.reset(exp_traj_cfg.mass, exp_traj_cfg.grav, 
+                                                exp_traj_cfg.dh, exp_traj_cfg.dv, 
+                                                exp_traj_cfg.cp, exp_traj_cfg.v_eps);
             
             // 更新备份轨迹优化算法配置参数
             node->get_parameter_or("traj_opt.backup_traj.uniform_time_en", back_traj_cfg.uniform_time_en, back_traj_cfg.uniform_time_en);

@@ -6,7 +6,7 @@ fsm:
   click_goal_topic: "/goal_pose"               # 点击目标话题名称
   click_height: 1.5                            # 点击目标的高度值
   click_yaw_en: true                           # 是否启用点击偏航角功能
-  replan_rate: 15.0                            # 重规划频率 (Hz)
+  replan_rate: 1.0                          # 重规划频率 (Hz)
   cmd_topic: "/planning/pos_cmd"               # 位置命令话题名称
   mpc_cmd_topic: "/planning_cmd/poly_traj"     # MPC命令话题名称
   px4_cmd_topic: "/planning/px4ctrl_cmd"          # PX4命令话题名称
@@ -18,7 +18,7 @@ super_planner:
   backup_traj_en: true                         # 是否启用备份轨迹
   detailed_log_en: false                       # 是否启用详细日志记录
   visualization_en: true                       # 是否启用可视化
-  use_fov_cut: false                           # 是否使用视场裁剪
+  use_fov_cut: true                           # 是否使用视场裁剪
   print_log: false                             # 是否打印日志
   visual_process: false                        # 是否启用视觉处理
   frontend_in_known_free: false                # 是否在已知自由空间进行前端处理

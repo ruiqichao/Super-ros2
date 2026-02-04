@@ -1,18 +1,13 @@
-goal_pub_topic: "/planning/click_goal"
-odom_topic: "/lidar_slam/odom"
+
+goal_pub_topic: "/planning/click_goal"                          # 目标发布话题
+odom_topic: "/lidar_slam/odom"                                  # 里程计话题
 # odom_topic: "/mavros/local_position/odom"
-# 0 for RVIZ and; 1 for Mavros; 2 for constant time
-start_trigger_type: 2
-# trigger after start_trigger_delay (s)
-start_program_delay: 3.0
-# 0 for PATH and 1 for waypoints
-cmd_type: 1
-# the distance threshold for waypoint goal swithcing
-switch_dis: 3.0
-# odom timeout threshold (s)
-odom_timeout: 0.1
-# goal publish dt (s), set to inf if the goal only need to pub once
-publish_dt: 99999.0
-# mission waypoints, must be in the same dimension
+start_trigger_type: 2                                           # 启动触发类型：0 为 RVIZ；1 为 Mavros；2 为恒定时间
+start_program_delay: 3.0                                        # 启动延迟后触发（秒）
+cmd_type: 1                                                     # 命令类型：0 为 PATH；1 为航点
+switch_dis: 3.0                                                 # 航点目标切换的距离阈值
+odom_timeout: 0.1                                               # 里程计超时阈值（秒）
+publish_dt: 99999.0                                             # 目标发布间隔（秒），设置为 inf 表示只发布一次
+# mission waypoints, must be in the same dimension              # 任务航点，必须在同一维度
 #    waypoints_file_name: "a_working_waypoints.txt"
 #waypoints_file_name: "benchmark_dense.txt"

@@ -231,6 +231,8 @@ namespace fsm {
         // 处理点击点的高度设置
         auto click_point = p;
         if (cfg_.click_height > -5) {
+            // 验证参数使用
+            std::cout << "[Fsm] Using click_height: " << cfg_.click_height << std::endl;
             click_point.z() = cfg_.click_height;
         }
 

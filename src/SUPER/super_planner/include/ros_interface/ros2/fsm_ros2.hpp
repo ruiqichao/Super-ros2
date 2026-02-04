@@ -35,11 +35,114 @@
 #include "mars_quadrotor_msgs/msg/polynomial_trajectory.hpp"
 #include "px4ctrl_msgs/msg/command.hpp"
 #include "traj_opt/super_traj_config.h"
+#include <shared_mutex>
 
 
 namespace fsm {
     class FsmRos2 : public Fsm {
+    private:
+        // 并发安全相关成员
+        mutable std::shared_mutex config_mutex_;  // 用于保护cfg_的读写访问
+        
+        // 线程安全的配置访问方法
+        Config getConfigSafe() const {
+            std::shared_lock<std::shared_mutex> lock(config_mutex_);
+            return cfg_;
+        }
+        
+        template<typename T>
+        T getConfigValueSafe(T Config::* member) const {
+            std::shared_lock<std::shared_mutex> lock(config_mutex_);
+            return cfg_.*member;
+        }
+        
+        void setConfigValueSafe(void (Config::* setter)(double), double value) {
+            std::unique_lock<std::shared_mutex> lock(config_mutex_);
+            (cfg_.*setter)(value);
+        }
+        
+        // RAII锁包装器类
+        class ConfigReadLock {
+        public:
+            explicit ConfigReadLock(const FsmRos2* fsm) : lock_(fsm->config_mutex_) {}
+        private:
+            std::shared_lock<std::shared_mutex> lock_;
+        };
+        
+        class ConfigWriteLock {
+        public:
+            explicit ConfigWriteLock(FsmRos2* fsm) : lock_(fsm->config_mutex_) {}
+        private:
+            std::unique_lock<std::shared_mutex> lock_;  
+        };
+                
+        // 参数验证辅助函数
+        bool validatePositiveDouble(const std::string& param_name, double value, 
+                                   rcl_interfaces::msg::SetParametersResult& result) {
+            if (value <= 0) {
+                result.successful = false;
+                result.reason = param_name + " must be positive, got: " + std::to_string(value);
+                RCLCPP_ERROR(nh_->get_logger(), "[FsmRos2] Parameter validation failed: %s", 
+                           result.reason.c_str());
+                return false;
+            }
+            return true;
+        }
+        
+        bool validateNonNegativeDouble(const std::string& param_name, double value,
+                                      rcl_interfaces::msg::SetParametersResult& result) {
+            if (value < 0) {
+                result.successful = false;
+                result.reason = param_name + " must be non-negative, got: " + std::to_string(value);
+                RCLCPP_ERROR(nh_->get_logger(), "[FsmRos2] Parameter validation failed: %s", 
+                           result.reason.c_str());
+                return false;
+            }
+            return true;
+        }
+        
+        bool validateRangeDouble(const std::string& param_name, double value, double min_val, double max_val,
+                               rcl_interfaces::msg::SetParametersResult& result) {
+            if (value < min_val || value > max_val) {
+                result.successful = false;
+                result.reason = param_name + " must be in range [" + std::to_string(min_val) + ", " + 
+                               std::to_string(max_val) + "], got: " + std::to_string(value);
+                RCLCPP_ERROR(nh_->get_logger(), "[FsmRos2] Parameter validation failed: %s", 
+                           result.reason.c_str());
+                return false;
+            }
+            return true;
+        }
+        
+        // Bool参数验证和状态检查辅助函数
+        bool shouldUpdateBoolParam(bool current_value, bool new_value, const std::string& param_name,
+                                  rcl_interfaces::msg::SetParametersResult& result) {
+            if (current_value == new_value) {
+                RCLCPP_DEBUG(nh_->get_logger(), "[FsmRos2] Parameter '%s' unchanged: %s", 
+                           param_name.c_str(), new_value ? "true" : "false");
+                return false;  // 值未改变，无需更新
+            }
+            return true;  // 值已改变，需要更新
+        }
+        
+        std::string getBoolStateString(bool value) {
+            return value ? "enabled" : "disabled";
+        }
+        
+        // 统一日志宏
+        #define PARAM_UPDATE_LOG(param_name, old_val, new_val) \
+            RCLCPP_INFO(this->nh_->get_logger(), "[FsmRos2] Parameter '%s' updated: %s -> %s", \
+                       param_name, std::to_string(old_val).c_str(), std::to_string(new_val).c_str())
+        
+        #define PARAM_UPDATE_LOG_BOOL(param_name, old_val, new_val) \
+            RCLCPP_INFO(this->nh_->get_logger(), "[FsmRos2] Parameter '%s' updated: %s -> %s", \
+                       param_name, (old_val ? "true" : "false"), (new_val ? "true" : "false"))
+        
+        #define PARAM_VALIDATION_ERROR(param_name, reason) \
+            RCLCPP_ERROR(this->nh_->get_logger(), "[FsmRos2] Parameter '%s' validation failed: %s", \
+                        param_name, reason)
 
+    public:
         rclcpp::Node::SharedPtr nh_;
         rclcpp::Publisher<mars_quadrotor_msgs::msg::PositionCommand>::SharedPtr cmd_pub_;
         rclcpp::Publisher<mars_quadrotor_msgs::msg::PolynomialTrajectory>::SharedPtr mpc_cmd_pub_;
@@ -183,6 +286,8 @@ namespace fsm {
         FsmRos2() = default;
 
         ~FsmRos2() {
+            // 清理所有ROS资源
+            cleanupResources();
             saveReplanLogToFile();
         };
 
@@ -244,6 +349,70 @@ namespace fsm {
             csv_writer.close();
         }
 
+        /**
+         * @brief 重新设置重规划定时器
+         * @note 根据当前配置的replan_rate重新创建定时器
+         */
+        void resetReplanTimer(double current_replan_rate) {
+            if (!nh_ || !replan_cbk_group_) return;
+            
+            // 销毁旧的定时器
+            replan_timer_.reset();
+            
+            // 根据新的replan_rate计算定时器周期
+            const int replan_ratems = static_cast<int>(1.0 / current_replan_rate * 1000);
+            
+            // 重新创建定时器
+            replan_timer_ = nh_->create_wall_timer(
+                    std::chrono::milliseconds(replan_ratems),
+                    std::bind(&FsmRos2::replanTimerCallback, this),
+                    exec_cbk_group_
+            );
+            
+            RCLCPP_INFO(nh_->get_logger(), "[FsmRos2] Replanning timer reset with rate: %.2f Hz (%d ms)", 
+                       current_replan_rate, replan_ratems);
+        }
+        
+        /**
+         * @brief 根据timer_en参数更新定时器状态
+         * @param current_timer_en 当前timer_en状态值
+         * @param current_replan_rate 当前重规划频率
+         * @note 启用或禁用定时器组
+         */
+        void updateTimers(bool current_timer_en, double current_replan_rate) {
+            if (!nh_ || !exec_cbk_group_ || !cmd_cbk_group_) return;
+            
+            if (current_timer_en) {
+                // 启用定时器
+                if (!execution_timer_) {
+                    execution_timer_ = nh_->create_wall_timer(
+                            std::chrono::milliseconds(10),
+                            std::bind(&FsmRos2::mainFsmTimerCallback, this),
+                            exec_cbk_group_
+                    );
+                }
+                if (!cmd_timer_) {
+                    cmd_timer_ = nh_->create_wall_timer(
+                            std::chrono::milliseconds(10),
+                            std::bind(&FsmRos2::pubCmdTimerCallback, this),
+                            cmd_cbk_group_
+                    );
+                }
+                
+                // 重新设置重规划定时器
+                resetReplanTimer(current_replan_rate);
+                
+                RCLCPP_INFO(nh_->get_logger(), "[FsmRos2] All timers enabled");
+            } else {
+                // 禁用定时器
+                execution_timer_.reset();
+                cmd_timer_.reset();
+                replan_timer_.reset();
+                
+                RCLCPP_INFO(nh_->get_logger(), "[FsmRos2] All timers disabled");
+            }
+        }
+
         bool getPoseFromTraj(super_utils::Pose &pose) {
             if (machine_state_ != FOLLOW_TRAJ) {
                 cout << YELLOW << "[Fsm] Not in FOLLOW_TRAJ state, can't get pose from traj." << RESET << endl;
@@ -280,6 +449,15 @@ namespace fsm {
             super_utils::Vec3f goal_p = Vec3f{msg->pose.position.x, msg->pose.position.y, msg->pose.position.z};
             super_utils::Quatf goal_q = super_utils::Quatf{msg->pose.orientation.w, msg->pose.orientation.x,
                                                            msg->pose.orientation.y, msg->pose.orientation.z};
+            
+            // 使用线程安全的方式获取配置值
+            {
+                ConfigReadLock read_lock(this);  // 获取读锁
+                RCLCPP_DEBUG(nh_->get_logger(), "[FsmRos2] Current click_yaw_en: %s, goal position: [%.3f, %.3f, %.3f]", 
+                            cfg_.click_yaw_en ? "enabled" : "disabled",
+                            goal_p.x(), goal_p.y(), goal_p.z());
+            }  // 读锁在此处自动释放
+            
             setGoalPosiAndYaw(goal_p, goal_q);
         }
 
@@ -507,7 +685,108 @@ namespace fsm {
                     }
                 }
             }
-                    
+            
+            // 处理FSM特定参数的动态更新
+            bool click_height_updated = false;
+            bool click_yaw_en_updated = false;
+            bool click_goal_en_updated = false;
+            bool replan_rate_updated = false;
+            bool timer_en_updated = false;
+            
+            // 使用线程安全的方式获取当前配置值
+            double new_click_height = getConfigValueSafe(&Config::click_height);
+            bool new_click_yaw_en = getConfigValueSafe(&Config::click_yaw_en);
+            bool new_click_goal_en = getConfigValueSafe(&Config::click_goal_en);
+            double new_replan_rate = getConfigValueSafe(&Config::replan_rate);
+            bool new_timer_en = getConfigValueSafe(&Config::timer_en);
+            
+            for (const auto &parameter : parameters) {
+                const std::string& param_name = parameter.get_name();
+                
+                if (param_name == "fsm.click_height") {
+                    double temp_value = parameter.as_double();
+                    // click_height应该允许负值（地面以下），但需要合理范围检查
+                    if (validateRangeDouble(param_name, temp_value, -10.0, 50.0, result)) {
+                        new_click_height = temp_value;
+                        click_height_updated = true;
+                        RCLCPP_INFO(nh_->get_logger(), "[FsmRos2] Received %s update to: %.3f", 
+                                  param_name.c_str(), new_click_height);
+                    }
+                } else if (param_name == "fsm.click_yaw_en") {
+                    bool temp_value = parameter.as_bool();
+                    if (shouldUpdateBoolParam(new_click_yaw_en, temp_value, param_name, result)) {
+                        new_click_yaw_en = temp_value;
+                        click_yaw_en_updated = true;
+                        RCLCPP_INFO(nh_->get_logger(), "[FsmRos2] Received %s update to: %s", 
+                                  param_name.c_str(), getBoolStateString(new_click_yaw_en).c_str());
+                    }
+                } else if (param_name == "fsm.click_goal_en") {
+                    bool temp_value = parameter.as_bool();
+                    if (shouldUpdateBoolParam(new_click_goal_en, temp_value, param_name, result)) {
+                        new_click_goal_en = temp_value;
+                        click_goal_en_updated = true;
+                        RCLCPP_INFO(nh_->get_logger(), "[FsmRos2] Received %s update to: %s", 
+                                  param_name.c_str(), getBoolStateString(new_click_goal_en).c_str());
+                    }
+                } else if (param_name == "fsm.replan_rate") {
+                    double temp_value = parameter.as_double();
+                    if (validatePositiveDouble(param_name, temp_value, result)) {
+                        new_replan_rate = temp_value;
+                        replan_rate_updated = true;
+                        RCLCPP_INFO(nh_->get_logger(), "[FsmRos2] Received %s update to: %.2f Hz", 
+                                  param_name.c_str(), new_replan_rate);
+                    }
+                } else if (param_name == "fsm.timer_en") {
+                    bool temp_value = parameter.as_bool();
+                    if (shouldUpdateBoolParam(new_timer_en, temp_value, param_name, result)) {
+                        new_timer_en = temp_value;
+                        timer_en_updated = true;
+                        RCLCPP_INFO(nh_->get_logger(), "[FsmRos2] Received %s update to: %s", 
+                                  param_name.c_str(), getBoolStateString(new_timer_en).c_str());
+                    }
+                }
+            }
+            
+            // 最后统一更新参数，确保原子性，并记录变更
+            {
+                ConfigWriteLock write_lock(this);  // 获取写锁
+                
+                if (click_height_updated) {
+                    double old_value = cfg_.click_height;
+                    cfg_.click_height = new_click_height;
+                    PARAM_UPDATE_LOG("fsm.click_height", old_value, new_click_height);
+                    // 验证参数传递
+                    RCLCPP_INFO(nh_->get_logger(), "[FsmRos2] click_height parameter passed to cfg_: %.3f", cfg_.click_height);
+                }
+                if (click_yaw_en_updated) {
+                    bool old_value = cfg_.click_yaw_en;
+                    cfg_.click_yaw_en = new_click_yaw_en;
+                    PARAM_UPDATE_LOG_BOOL("fsm.click_yaw_en", old_value, new_click_yaw_en);
+                }
+                if (click_goal_en_updated) {
+                    bool old_value = cfg_.click_goal_en;
+                    cfg_.click_goal_en = new_click_goal_en;
+                    PARAM_UPDATE_LOG_BOOL("fsm.click_goal_en", old_value, new_click_goal_en);
+                    RCLCPP_WARN(nh_->get_logger(), "[FsmRos2] click_goal_en changed to %s - System restart recommended for full effect", 
+                               getBoolStateString(new_click_goal_en).c_str());
+                }
+                if (replan_rate_updated) {
+                    double old_value = cfg_.replan_rate;
+                    cfg_.replan_rate = new_replan_rate;
+                    PARAM_UPDATE_LOG("fsm.replan_rate", old_value, new_replan_rate);
+                    // 验证参数传递
+                    RCLCPP_INFO(nh_->get_logger(), "[FsmRos2] replan_rate parameter passed to cfg_: %.2f Hz", cfg_.replan_rate);
+                    // 重新设置重规划定时器
+                    resetReplanTimer(new_replan_rate);
+                }
+                if (timer_en_updated) {
+                    bool old_value = cfg_.timer_en;
+                    cfg_.timer_en = new_timer_en;
+                    PARAM_UPDATE_LOG_BOOL("fsm.timer_en", old_value, new_timer_en);
+                    // 根据新值启用或禁用定时器
+                    updateTimers(new_timer_en, new_replan_rate);
+                }
+            }  // 写锁在此处自动释放                    
             return result;
         }
 
@@ -572,8 +851,15 @@ namespace fsm {
             nh_->declare_parameter("traj_opt.switch.save_log_en", rclcpp::ParameterValue(planner_cfg.exp_traj_cfg.save_log_en));
             nh_->declare_parameter("traj_opt.switch.print_optimizer_log", rclcpp::ParameterValue(planner_cfg.exp_traj_cfg.print_optimizer_log));
             
+            // 轨迹优化平坦性参数 (路径与YAML保持一致)
+            nh_->declare_parameter("traj_opt.flatness.mass", rclcpp::ParameterValue(planner_cfg.exp_traj_cfg.mass));
+            nh_->declare_parameter("traj_opt.flatness.dh", rclcpp::ParameterValue(planner_cfg.exp_traj_cfg.dh));
+            nh_->declare_parameter("traj_opt.flatness.dv", rclcpp::ParameterValue(planner_cfg.exp_traj_cfg.dv));
+            nh_->declare_parameter("traj_opt.flatness.grav", rclcpp::ParameterValue(planner_cfg.exp_traj_cfg.grav));
+            nh_->declare_parameter("traj_opt.flatness.cp", rclcpp::ParameterValue(planner_cfg.exp_traj_cfg.cp));
+            nh_->declare_parameter("traj_opt.flatness.v_eps", rclcpp::ParameterValue(planner_cfg.exp_traj_cfg.v_eps));
+            
             // 规划器策略开关与全局参数
-            nh_->declare_parameter("super_planner.backup_traj_en", rclcpp::ParameterValue(planner_cfg.backup_traj_en));
             nh_->declare_parameter("super_planner.use_fov_cut", rclcpp::ParameterValue(planner_cfg.use_fov_cut));
             nh_->declare_parameter("super_planner.print_log", rclcpp::ParameterValue(planner_cfg.print_log));
             nh_->declare_parameter("super_planner.goal_vel_en", rclcpp::ParameterValue(planner_cfg.goal_vel_en));
@@ -606,11 +892,41 @@ namespace fsm {
             nh_->declare_parameter("astar.allow_diag", rclcpp::ParameterValue(planner_cfg.astar_allow_diag));
             nh_->declare_parameter("astar.debug_visualization_en", rclcpp::ParameterValue(planner_cfg.astar_debug_visualization_en));
             
+            // FSM特定参数 (click_height, click_yaw_en, click_goal_en, replan_rate, timer_en)
+            nh_->declare_parameter("fsm.click_height", rclcpp::ParameterValue(cfg_.click_height));
+            nh_->declare_parameter("fsm.click_yaw_en", rclcpp::ParameterValue(cfg_.click_yaw_en));
+            nh_->declare_parameter("fsm.click_goal_en", rclcpp::ParameterValue(cfg_.click_goal_en));
+            nh_->declare_parameter("fsm.replan_rate", rclcpp::ParameterValue(cfg_.replan_rate));
+            nh_->declare_parameter("fsm.timer_en", rclcpp::ParameterValue(cfg_.timer_en));
+            
             // 添加回调用于动态参数
             dyn_params_handler_ = nh_->add_on_set_parameters_callback(
                 [this](std::vector<rclcpp::Parameter> parameters) {
                     return this->dynamicParametersCallback(parameters);
                 });
+        };
+        
+        /**
+         * @brief 清理所有ROS资源
+         * @note 在析构函数和重启前调用，确保资源正确释放
+         */
+        void cleanupResources() {
+            // 重置所有定时器
+            execution_timer_.reset();
+            cmd_timer_.reset();
+            replan_timer_.reset();
+            
+            // 重置回调组
+            exec_cbk_group_.reset();
+            cmd_cbk_group_.reset();
+            replan_cbk_group_.reset();
+            goal_cbk_group_.reset();
+            
+            // 重置ROS句柄
+            nh_.reset();
+            dyn_params_handler_.reset();
+            
+            RCLCPP_DEBUG(rclcpp::get_logger("fsm_node"), "[FsmRos2] All resources cleaned up");
         }
 
     };

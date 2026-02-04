@@ -129,7 +129,12 @@ namespace super_planner {
         }
 
         back_traj_info.setEmpty();
-        RET_CODE back_ret_code = generateBackupTrajectory(exp_traj_info, back_traj_info);
+        RET_CODE back_ret_code = NO_NEED;  // 默认不需要备份轨迹
+        
+        // 根据YAML配置的backup_traj_en参数决定是否生成备份轨迹
+        if (cfg_.backup_traj_en) {
+            back_ret_code = generateBackupTrajectory(exp_traj_info, back_traj_info);
+        }
 
         // 根据备份轨迹生成结果处理
         if (back_ret_code == SUCCESS) {
@@ -236,7 +241,12 @@ namespace super_planner {
         BackupTraj back_traj_info;
         // 2）生成备份轨迹
         TimeConsuming t_back("t_back", false);
-        RET_CODE back_ret_code = generateBackupTrajectory(exp_traj_info, back_traj_info);
+        RET_CODE back_ret_code = NO_NEED;  // 默认不需要备份轨迹
+        
+        // 根据YAML配置的backup_traj_en参数决定是否生成备份轨迹
+        if (cfg_.backup_traj_en) {
+            back_ret_code = generateBackupTrajectory(exp_traj_info, back_traj_info);
+        }
         time_consuming_[GENERATE_BACK_TRAJ] = t_back.stop();
 
         // 统计前端和优化时间
