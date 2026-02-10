@@ -16,13 +16,13 @@
     <p>
         <h45>
             <br>
-           <img src='./misc/mars_logo.svg' alt='HKU MaRS Lab'>
+           <img src='src/SUPER/misc/mars_logo.svg' alt='HKU MaRS Lab'>
             <br>
         </h5>
     </p>
-    <a href='https://www.science.org/doi/10.1126/scirobotics.ado6187'><img src='./misc/arXiv-super.svg' alt='arxiv'></a>
-    <a href="https://www.bilibili.com/video/BV1BSFgeJEJn/"><img alt="Bilibili" src="./misc/Video-Bilibili-blue.svg"/></a>
-    <a href="https://youtu.be/GPHuzG0ANmI?si=npW-FNp1rkQQ5YaF"><img alt="Youtube" src="./misc/Video-Youtube-red.svg"/></a>
+    <a href='https://www.science.org/doi/10.1126/scirobotics.ado6187'><img src='src/SUPER/misc/arXiv-super.svg' alt='arxiv'></a>
+    <a href="https://www.bilibili.com/video/BV1BSFgeJEJn/"><img alt="Bilibili" src="src/SUPER/misc/Video-Bilibili-blue.svg"/></a>
+    <a href="https://youtu.be/GPHuzG0ANmI?si=npW-FNp1rkQQ5YaF"><img alt="Youtube" src="src/SUPER/misc/Video-Youtube-red.svg"/></a>
 </div>
 
 # 更新
@@ -32,7 +32,7 @@
 * **2025年1月29日** - SUPER的论文现在在[*Science Robotics*](https://www.science.org/doi/10.1126/scirobotics.ado6187)官方网站上作为特色文章。
 * **2024年12月12日** - 🎉 我们的论文已被*Science Robotics*接收！
 
-我们的论文也可在[这里](misc/scirobotics.ado6187.pdf)获取。如果我们的仓库支持了您的学术项目，请引用我们的工作。谢谢！
+我们的论文也可在[这里](src/SUPER/misc/scirobotics.ado6187.pdf)获取。如果我们的仓库支持了您的学术项目，请引用我们的工作。谢谢！
 
 ```tex
 @article{ren2025safety,
@@ -69,16 +69,16 @@
 ## 1.1 挑战性环境中的自主导航
 
 (点击观看视频演示)
-[![Video Demo](./misc/fig1.gif)](https://youtu.be/GPHuzG0ANmI?si=W83mDMxqfgWReWPF)
+[![Video Demo](src/SUPER/misc/fig1.gif)](https://youtu.be/GPHuzG0ANmI?si=W83mDMxqfgWReWPF)
 
 ## 1.2 应用：目标跟踪和自主探索
 
 SUPER已成功部署到各种应用中，包括由[@jackykongfz](https://github.com/jackykongfz) 和 [@ZbyLGsc](https://github.com/ZbyLGsc) 来自[STAR Lab](sysu-star.com)等在进行的大规模自主探索项目，以及白天和夜晚条件下的目标跟踪。
 
-![exp](./misc/exp.gif)
+![exp](src/SUPER/misc/exp.gif)
 > ⬆️ 这个片段来自Kong [[@jackykongfz](https://github.com/jackykongfz) ] 等人在[STAR Lab](sysu-star.com) 合作下使用SUPER完成的未发表工作。
 
-![tracking](./misc/tracking.gif)
+![tracking](src/SUPER/misc/tracking.gif)
 
 ## 1.3 支持的项目
 
@@ -86,13 +86,13 @@ SUPER已成功部署到各种应用中，包括由[@jackykongfz](https://github.
 
 基于SUPER，一个类似的规划系统已在[@genegzl](https://github.com/genegzl) 等人的[尾座式无人机自主导航](https://github.com/hku-mars/EFOPT)中成功验证。
 
-![tailsitter](./misc/tailsitter.gif)
+![tailsitter](src/SUPER/misc/tailsitter.gif)
 
 ### 1.3.2 FAST-LIVO2 (TRO '24)
 
 SUPER在[@xuankuzcr](https://github.com/xuankuzcr) 等人的[FAST-LIVO2: Fast, Direct LiDAR-Inertial-Visual Odometry](https://github.com/hku-mars/FAST-LIVO2)视频演示中作为飞行平台和导航系统。
 
-<img src="./misc/image-20250130031404057.png" alt="image-20250130031404057" style="zoom:50%;" />
+<img src="src/SUPER/misc/image-20250130031404057.png" alt="image-20250130031404057" style="zoom:50%;" />
 
 # 2 快速开始
 
@@ -173,9 +173,9 @@ ros2 launch mission_planner click_demo.launch.py
 SUPER允许用户加载自己的**.pcd**地图作为仿真环境。方法如下：
 
 1. 将您的**.pcd**文件放置在：
-   **[./mars_uav_sim/perfect_drone_sim/pcd/](./mars_uav_sim/perfect_drone_sim/pcd)**
+   **[./mars_uav_sim/perfect_drone_sim/pcd/](src/SUPER/mars_uav_sim/perfect_drone_sim/pcd)**
 2. 修改以下YAML文件中的`pcd_name`参数：
-   **[./mars_uav_sim/perfect_drone_sim/config](./mars_uav_sim/perfect_drone_sim/config)**
+   **[./mars_uav_sim/perfect_drone_sim/config](src/SUPER/mars_uav_sim/perfect_drone_sim/config)**
 
 这将实现自定义地图的无缝集成以进行仿真。
 
