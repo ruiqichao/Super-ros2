@@ -9,3 +9,6 @@ install/
 .git/
 *.zip
 .cache/
+.vscode/
+.arms_cache/
+

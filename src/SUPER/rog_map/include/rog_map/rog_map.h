@@ -55,7 +55,6 @@ namespace rog_map {
             return cfg_;
         }
 
-
         bool isLineFree(const Vec3f& start_pt, const Vec3f& end_pt,
                         const double& max_dis = 999999,
                         const vec_Vec3i& neighbor_list = vec_Vec3i{}) const;

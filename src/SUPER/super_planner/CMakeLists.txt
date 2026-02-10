@@ -125,9 +125,20 @@ if(rog_map_FOUND)
     ament_target_dependencies(super PUBLIC rog_map)
 endif()
 
+# Ensure include directories are set for all targets
+if(rog_map_INCLUDE_DIRS)
+    target_include_directories(super PUBLIC ${rog_map_INCLUDE_DIRS})
+endif()
+
 #=================FOR Benchmark Node ============================#
 add_executable(fsm_node
         Apps/fsm_node_ros2.cpp
+)
+target_include_directories(fsm_node PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
+        ${rog_map_INCLUDE_DIRS}
+        /home/ruiqichao/ros2_demo/planner/super_ws/install/rog_map/include
+        /home/ruiqichao/ros2_demo/planner/super_ws/install/rog_map/include/rog_map_ros
 )
 target_link_libraries(fsm_node PUBLIC
         super
@@ -141,6 +152,12 @@ ament_target_dependencies(fsm_node PUBLIC
 #=================FOR Test Dynamic Params Node ============================#
 add_executable(test_dynamic_params
         test/test_dynamic_params.cpp
+)
+target_include_directories(test_dynamic_params PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
+        ${rog_map_INCLUDE_DIRS}
+        /home/ruiqichao/ros2_demo/planner/super_ws/install/rog_map/include
+        /home/ruiqichao/ros2_demo/planner/super_ws/install/rog_map/include/rog_map_ros
 )
 target_link_libraries(test_dynamic_params PUBLIC
         super

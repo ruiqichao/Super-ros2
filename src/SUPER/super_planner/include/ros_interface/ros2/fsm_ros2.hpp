@@ -37,6 +37,11 @@
 #include "traj_opt/super_traj_config.h"
 #include <shared_mutex>
 
+// 包含扩展的ROGMapROS类，支持动态参数
+#include "rog_map_ros/rog_map_ros2_dynamic.hpp"
+#include <rcl_interfaces/msg/set_parameters_result.hpp>
+#include <rclcpp/parameter_client.hpp>
+
 
 namespace fsm {
     class FsmRos2 : public Fsm {
@@ -157,7 +162,7 @@ namespace fsm {
         rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr dyn_params_handler_;
 
         mars_quadrotor_msgs::msg::PositionCommand pid_cmd_;
-        rog_map::ROGMapROS::Ptr map_ptr_;
+        rog_map::ROGMapROSDynamic::Ptr map_ptr_;
         mars_quadrotor_msgs::msg::PositionCommand latest_cmd;
         nav_msgs::msg::Path path;
 
@@ -470,7 +475,7 @@ namespace fsm {
             // 初始化参数读取
             nh_ = nh;
             cfg_ = Config(cfg_path);
-            map_ptr_ = std::make_shared<rog_map::ROGMapROS>(nh_, cfg_path);
+            map_ptr_ = std::make_shared<rog_map::ROGMapROSDynamic>(nh_, cfg_path);
             // 初始化Planner
             ros_ptr_ = std::make_shared<ros_interface::Ros2Interface>(nh_);
             planner_ptr_ = std::make_shared<SuperPlanner>(cfg_path, ros_ptr_, map_ptr_);
@@ -624,8 +629,15 @@ namespace fsm {
          */
         rcl_interfaces::msg::SetParametersResult
         dynamicParametersCallback(std::vector<rclcpp::Parameter> parameters) {
+            RCLCPP_INFO(nh_->get_logger(), "[FsmRos2] dynamicParametersCallback called with %zu parameters", parameters.size());
+            
             rcl_interfaces::msg::SetParametersResult result;
             result.successful = true;
+            
+            // 打印所有参数
+            for (const auto& param : parameters) {
+                RCLCPP_INFO(nh_->get_logger(), "[FsmRos2] Parameter: %s", param.get_name().c_str());
+            }
                     
             // 更新SuperPlanner的运行时参数（从ROS2参数服务器获取最新参数值）
             if (planner_ptr_) {
@@ -693,6 +705,9 @@ namespace fsm {
             bool replan_rate_updated = false;
             bool timer_en_updated = false;
             
+            // 处理ROG地图参数的动态更新
+            bool rog_map_params_updated = false;
+            
             // 使用线程安全的方式获取当前配置值
             double new_click_height = getConfigValueSafe(&Config::click_height);
             bool new_click_yaw_en = getConfigValueSafe(&Config::click_yaw_en);
@@ -744,6 +759,11 @@ namespace fsm {
                         RCLCPP_INFO(nh_->get_logger(), "[FsmRos2] Received %s update to: %s", 
                                   param_name.c_str(), getBoolStateString(new_timer_en).c_str());
                     }
+                } else if (param_name.find("rog_map.") == 0) {
+                    // 将ROG地图参数转发到ROGMap节点
+                    rog_map_params_updated = true;
+                    RCLCPP_INFO(nh_->get_logger(), "[FsmRos2] Forwarding ROG map parameter %s to ROGMap node", 
+                              param_name.c_str());
                 }
             }
             
@@ -786,7 +806,12 @@ namespace fsm {
                     // 根据新值启用或禁用定时器
                     updateTimers(new_timer_en, new_replan_rate);
                 }
-            }  // 写锁在此处自动释放                    
+            }  // 写锁在此处自动释放
+            
+            // 如果有ROG地图参数需要更新，转发到ROGMap节点
+            if (rog_map_params_updated) {
+                forwardRogMapParameters(parameters);
+            }                    
             return result;
         }
 
@@ -887,6 +912,45 @@ namespace fsm {
             nh_->declare_parameter("rog_map.virtual_ground_height", rclcpp::ParameterValue(planner_cfg.virtual_ground_height));
             nh_->declare_parameter("rog_map.virtual_ceil_height", rclcpp::ParameterValue(planner_cfg.virtual_ceil_height));
             
+            // ROG地图可视化参数
+            nh_->declare_parameter("rog_map.visualization_enable", rclcpp::ParameterValue(false));
+            nh_->declare_parameter("rog_map.visualization_range_x", rclcpp::ParameterValue(10.0));
+            nh_->declare_parameter("rog_map.visualization_range_y", rclcpp::ParameterValue(10.0));
+            nh_->declare_parameter("rog_map.visualization_range_z", rclcpp::ParameterValue(5.0));
+            nh_->declare_parameter("rog_map.visualization_time_rate", rclcpp::ParameterValue(5.0));
+            
+            // ROG地图ESDF参数
+            nh_->declare_parameter("rog_map.esdf_enable", rclcpp::ParameterValue(true));
+            nh_->declare_parameter("rog_map.esdf_resolution", rclcpp::ParameterValue(0.2));
+            
+            // ROG地图光线投射参数
+            nh_->declare_parameter("rog_map.raycasting_enable", rclcpp::ParameterValue(true));
+            nh_->declare_parameter("rog_map.raycasting_p_hit", rclcpp::ParameterValue(0.65));
+            nh_->declare_parameter("rog_map.raycasting_p_miss", rclcpp::ParameterValue(0.4));
+            nh_->declare_parameter("rog_map.raycasting_p_occ", rclcpp::ParameterValue(0.8));
+            nh_->declare_parameter("rog_map.raycasting_p_free", rclcpp::ParameterValue(0.3));
+            
+            // ROG地图其他参数
+            nh_->declare_parameter("rog_map.inflation_step", rclcpp::ParameterValue(1));
+            nh_->declare_parameter("rog_map.map_sliding_threshold", rclcpp::ParameterValue(1.0));
+            nh_->declare_parameter("rog_map.resolution", rclcpp::ParameterValue(0.1));
+            nh_->declare_parameter("rog_map.inflation_resolution", rclcpp::ParameterValue(0.2));
+            nh_->declare_parameter("rog_map.unk_inflation_en", rclcpp::ParameterValue(false));
+            nh_->declare_parameter("rog_map.unk_inflation_step", rclcpp::ParameterValue(1));
+            nh_->declare_parameter("rog_map.load_pcd_en", rclcpp::ParameterValue(false));
+            nh_->declare_parameter("rog_map.map_sliding_en", rclcpp::ParameterValue(true));
+            nh_->declare_parameter("rog_map.ros_callback_en", rclcpp::ParameterValue(true));
+            nh_->declare_parameter("rog_map.cloud_topic", rclcpp::ParameterValue(std::string("/cloud_registered")));
+            nh_->declare_parameter("rog_map.odom_topic", rclcpp::ParameterValue(std::string("/lidar_slam/odom")));
+            nh_->declare_parameter("rog_map.odom_timeout", rclcpp::ParameterValue(2.0));
+            nh_->declare_parameter("rog_map.use_dynamic_reconfigure", rclcpp::ParameterValue(false));
+            nh_->declare_parameter("rog_map.viz_frame_rate", rclcpp::ParameterValue(2));
+            nh_->declare_parameter("rog_map.frame_id", rclcpp::ParameterValue(std::string("world")));
+            nh_->declare_parameter("rog_map.intensity_thresh", rclcpp::ParameterValue(-10));
+            nh_->declare_parameter("rog_map.point_filt_num", rclcpp::ParameterValue(1));
+            nh_->declare_parameter("rog_map.batch_update_size", rclcpp::ParameterValue(1));
+            nh_->declare_parameter("rog_map.unk_thresh", rclcpp::ParameterValue(1.0));
+            
             // Astar相关参数
             nh_->declare_parameter("astar.heu_type", rclcpp::ParameterValue(planner_cfg.astar_heu_type));
             nh_->declare_parameter("astar.allow_diag", rclcpp::ParameterValue(planner_cfg.astar_allow_diag));
@@ -905,6 +969,45 @@ namespace fsm {
                     return this->dynamicParametersCallback(parameters);
                 });
         };
+        
+        /**
+         * @brief 更新ROG地图参数
+         * @param parameters 所有参数列表，从中筛选出ROG地图参数
+         * @note 直接更新ROGMap实例中的参数，通过updateParameters接口
+         */
+        void forwardRogMapParameters(const std::vector<rclcpp::Parameter>& parameters) {
+            std::cout << "[FsmRos2] forwardRogMapParameters called with " << parameters.size() << " parameters" << std::endl;
+            
+            if (!map_ptr_) {
+                std::cerr << "[FsmRos2] ERROR: ROGMap pointer is null, cannot update parameters" << std::endl;
+                return;
+            }
+            
+            // 提取ROG地图相关参数并去掉"rog_map."前缀
+            std::vector<rclcpp::Parameter> rog_map_params;
+            for (const auto& param : parameters) {
+                const std::string& param_name = param.get_name();
+                if (param_name.find("rog_map.") == 0) {
+                    // 去掉"rog_map."前缀，因为ROGMap内部不需要这个前缀
+                    std::string rog_param_name = param_name.substr(8); // "rog_map."长度为8
+                    rog_map_params.push_back(rclcpp::Parameter(rog_param_name, param.get_parameter_value()));
+                    std::cout << "[FsmRos2] Forwarding ROG map parameter: " << param_name << " -> " << rog_param_name << std::endl;
+                }
+            }
+            
+            if (!rog_map_params.empty()) {
+                std::cout << "[FsmRos2] Calling updateParameters with " << rog_map_params.size() << " parameters" << std::endl;
+                // 直接调用ROGMapROS的updateParameters接口
+                auto result = map_ptr_->updateParameters(rog_map_params);
+                if (!result.successful) {
+                    std::cerr << "[FsmRos2] ERROR: Failed to set ROG map parameter: " << result.reason << std::endl;
+                } else {
+                    std::cout << "[FsmRos2] Successfully updated " << rog_map_params.size() << " ROG map parameters" << std::endl;
+                }
+            } else {
+                std::cout << "[FsmRos2] No ROG map parameters to update" << std::endl;
+            }
+        }
         
         /**
          * @brief 清理所有ROS资源

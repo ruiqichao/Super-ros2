@@ -19,7 +19,7 @@ super_planner:
   detailed_log_en: false                       # 是否启用详细日志记录
   visualization_en: true                       # 是否启用可视化
   use_fov_cut: false                           # 是否使用视场裁剪
-  print_log: false                             # 是否打印日志
+  print_log: true                             # 是否打印日志
   visual_process: false                        # 是否启用视觉处理
   frontend_in_known_free: false                # 是否在已知自由空间进行前端处理
   goal_yaw_en: true                            # 是否启用目标点偏航角

@@ -63,6 +63,15 @@ namespace rog_map {
 
         GridType getGridType(const Vec3i &id_g) const ;
 
+        // 安全更新特定配置参数
+        void updateInflationStep(int new_inflation_step) {
+            cfg_.inflation_step = new_inflation_step;
+        }
+        
+        void updateUnkInflationStep(int new_unk_inflation_step) {
+            cfg_.unk_inflation_step = new_unk_inflation_step;
+        }
+
     private:
         struct InfMapData {
             std::vector<int16_t> occ_inflate_cnt;

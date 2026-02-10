@@ -42,10 +42,17 @@ find_package(rosidl_default_generators REQUIRED)
 set(includes
         include
         include/rog_map
+        include/rog_map_ros
         include/super_utils
         ${Eigen_INCLUDE_DIRS}
         #            ${OpenCV_INCLUDE_DIRS}
         ${PCL_INCLUDE_DIRS}
+)
+
+# Add generated service files directory
+set(generated_include_dirs
+        ${CMAKE_CURRENT_BINARY_DIR}/rosidl_generator_c
+        ${CMAKE_CURRENT_BINARY_DIR}/rosidl_generator_cpp
 )
 
 set(third_party_libs
@@ -62,10 +69,12 @@ set(ros_libs
         visualization_msgs
         pcl_conversions
         tf2_ros
+        rclcpp_components
 )
 
 include_directories(
         ${includes}
+        ${generated_include_dirs}
 )
 
 file(GLOB_RECURSE srcs CONFIGURE_DEPENDS src/*.cpp include/*.h include/*.hpp include/*.cpp)
@@ -86,12 +95,14 @@ target_link_libraries(rog_map_core PUBLIC
         ${third_party_libs}
 )
 
+# Link rosidl interfaces
+target_link_libraries(rog_map_core ${${PROJECT_NAME}_LIBRARIES})
+
 # Generate ROS interfaces
 rosidl_generate_interfaces(${PROJECT_NAME}
         "srv/ResetMap.srv"
         DEPENDENCIES geometry_msgs std_msgs
 )
-
 
 install(TARGETS
         rog_map_core

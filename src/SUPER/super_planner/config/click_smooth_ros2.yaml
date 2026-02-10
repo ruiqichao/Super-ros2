@@ -6,7 +6,7 @@ fsm:
   click_goal_topic: "/goal_pose"               # 点击目标话题名称
   click_height: 1.5                            # 点击目标的高度值
   click_yaw_en: true                           # 是否启用点击偏航角功能
-  replan_rate: 1.0                          # 重规划频率 (Hz)
+  replan_rate: 5.0                          # 重规划频率 (Hz)
   cmd_topic: "/planning/pos_cmd"               # 位置命令话题名称
   mpc_cmd_topic: "/planning_cmd/poly_traj"     # MPC命令话题名称
   px4_cmd_topic: "/planning/px4ctrl_cmd"          # PX4命令话题名称
@@ -121,7 +121,7 @@ astar:
 # ROG 地图配置
 rog_map:
   resolution: 0.1                              # 分辨率
-  inflation_resolution: 0.2                    # 膨胀分辨率
+  inflation_resolution: 0.1                    # 膨胀分辨率
   inflation_step: 2                            # 膨胀步数
   unk_inflation_en: false                      # 是否启用未知区域膨胀
   unk_inflation_step: 1                        # 未知区域膨胀步数
@@ -137,13 +137,13 @@ rog_map:
   # 地图滑动配置
   map_sliding:
     enable: true                               # 是否启用
-    threshold: 0.3                             # 地图滑动的最小距离 [m]
+    threshold: 0.1                             # 地图滑动的最小距离 [m]
 
   # ESDF (Euclidean Signed Distance Field) 配置
   esdf:
-    enable: false                              # 是否启用
+    enable: true                              # 是否启用
     resolution: 0.1                            # 分辨率
-    local_update_box: [ 5,5,3 ]                # ESDF 更新范围 [m]
+    local_update_box: [ 10,10,3 ]                # ESDF 更新范围 [m]
 
   # 如果 [enable = true], ROG-Map 将主动接收ROS话题作为输入
   # 否则用户应调用 [updateMap] 函数来更新地图
@@ -157,12 +157,12 @@ rog_map:
   # 可视化配置
   visualization:
     enable: true                               # 是否启用
-    use_dynamic_reconfigure: false             # 当启用时，使用 rqt_reconfigure 来更改可视化参数
-    time_rate: 2                               # 可视化速率 [Hz], 如果设置为 0, 可视化不会被帧触发
-    frame_rate: 0                              # 可视化帧率 [Hz], 如果设置为 0, 可视化不会被帧触发
+    use_dynamic_reconfigure: true             # 当启用时，使用 rqt_reconfigure 来更改可视化参数
+    time_rate: 5                               # 可视化速率 [Hz], 如果设置为 0, 可视化不会被帧触发
+    frame_rate: 5                              # 可视化帧率 [Hz], 如果设置为 0, 可视化不会被帧触发
     range: [ 15, 15,4 ]                        # 里程计附近的可视化范围 [m]
     frame_id: "world"                          # 坐标系ID
-    pub_unknown_map_en: false                  # 是否发布未知地图
+    pub_unknown_map_en: true                  # 是否发布未知地图
 
   intensity_thresh: -10                        # 点云强度滤波器. 如果点的强度小于此值, 将被忽略 (避免黄昏等噪声)
   point_filt_num: 1                            # 点云的时间下采样率, 例如如果设置为k, 点云将被下采样为1/k

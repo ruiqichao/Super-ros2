@@ -297,6 +297,250 @@ namespace rog_map {
             vm_.mkr_arr_pub->publish(mkr_arr);
         }
 
+        // 动态参数回调函数
+        rcl_interfaces::msg::SetParametersResult parametersCallback(const std::vector<rclcpp::Parameter> &parameters) {
+            std::cout << "[ROGMapROS] parametersCallback called with " << parameters.size() << " parameters" << std::endl;
+            
+            rcl_interfaces::msg::SetParametersResult result;
+            result.successful = true;
+
+            for (const auto &param : parameters) {
+                std::cout << "[ROGMapROS] Processing parameter: " << param.get_name() << std::endl;
+
+                // 更新可视化参数
+                if (param.get_name() == "visualization_enable") {
+                    std::lock_guard<std::mutex> lock(config_mutex_);
+                    cfg_.visualization_en = param.as_bool();
+                    RCLCPP_INFO(nh_->get_logger(), "Updated visualization_en to %s", 
+                                cfg_.visualization_en ? "true" : "false");
+
+                } else if (param.get_name() == "visualization_range_x") {
+                    std::lock_guard<std::mutex> lock(config_mutex_);
+                    cfg_.visualization_range[0] = param.as_double();
+                    RCLCPP_INFO(nh_->get_logger(), "Updated visualization_range.x to %.2f", 
+                                cfg_.visualization_range[0]);
+
+                } else if (param.get_name() == "visualization_range_y") {
+                    std::lock_guard<std::mutex> lock(config_mutex_);
+                    cfg_.visualization_range[1] = param.as_double();
+                    RCLCPP_INFO(nh_->get_logger(), "Updated visualization_range.y to %.2f", 
+                                cfg_.visualization_range[1]);
+
+                } else if (param.get_name() == "visualization_range_z") {
+                    std::lock_guard<std::mutex> lock(config_mutex_);
+                    cfg_.visualization_range[2] = param.as_double();
+                    RCLCPP_INFO(nh_->get_logger(), "Updated visualization_range.z to %.2f", 
+                                cfg_.visualization_range[2]);
+
+                } else if (param.get_name() == "esdf_enable") {
+                    std::lock_guard<std::mutex> lock(config_mutex_);
+                    cfg_.esdf_en = param.as_bool();
+                    RCLCPP_INFO(nh_->get_logger(), "Updated esdf_en to %s", 
+                                cfg_.esdf_en ? "true" : "false");
+
+                } else if (param.get_name() == "esdf_resolution") {
+                    std::lock_guard<std::mutex> lock(config_mutex_);
+                    cfg_.esdf_resolution = param.as_double();
+                    RCLCPP_INFO(nh_->get_logger(), "Updated esdf_resolution to %.2f", 
+                                cfg_.esdf_resolution);
+
+                } else if (param.get_name() == "raycasting_enable") {
+                    std::lock_guard<std::mutex> lock(config_mutex_);
+                    cfg_.raycasting_en = param.as_bool();
+                    RCLCPP_INFO(nh_->get_logger(), "Updated raycasting_en to %s", 
+                                cfg_.raycasting_en ? "true" : "false");
+
+                } else if (param.get_name() == "raycasting_p_hit") {
+                    std::lock_guard<std::mutex> lock(config_mutex_);
+                    cfg_.p_hit = param.as_double();
+                    cfg_.l_hit = calculate_logit(cfg_.p_hit);
+                    RCLCPP_INFO(nh_->get_logger(), "Updated p_hit to %.2f", cfg_.p_hit);
+
+                } else if (param.get_name() == "raycasting_p_miss") {
+                    std::lock_guard<std::mutex> lock(config_mutex_);
+                    cfg_.p_miss = param.as_double();
+                    cfg_.l_miss = calculate_logit(cfg_.p_miss);
+                    RCLCPP_INFO(nh_->get_logger(), "Updated p_miss to %.2f", cfg_.p_miss);
+
+                } else if (param.get_name() == "raycasting_p_occ") {
+                    std::lock_guard<std::mutex> lock(config_mutex_);
+                    cfg_.p_occ = param.as_double();
+                    cfg_.l_occ = calculate_logit(cfg_.p_occ);
+                    RCLCPP_INFO(nh_->get_logger(), "Updated p_occ to %.2f", cfg_.p_occ);
+
+                } else if (param.get_name() == "raycasting_p_free") {
+                    std::lock_guard<std::mutex> lock(config_mutex_);
+                    cfg_.p_free = param.as_double();
+                    cfg_.l_free = calculate_logit(cfg_.p_free);
+                    RCLCPP_INFO(nh_->get_logger(), "Updated p_free to %.2f", cfg_.p_free);
+
+                } else if (param.get_name() == "inflation_step") {
+                    {
+                        std::lock_guard<std::mutex> lock(config_mutex_);
+                        cfg_.inflation_step = param.as_int();
+                        RCLCPP_INFO(nh_->get_logger(), "Updated inflation_step to %d", cfg_.inflation_step);
+                    }
+                    // 同时更新 inf_map_ 中的 inflation_step
+                    if (inf_map_) {
+                        inf_map_->updateInflationStep(param.as_int());
+                    }
+
+                } else if (param.get_name() == "visualization_time_rate") {
+                    std::lock_guard<std::mutex> lock(config_mutex_);
+                    cfg_.viz_time_rate = param.as_double();
+                    RCLCPP_INFO(nh_->get_logger(), "Updated viz_time_rate to %.2f", cfg_.viz_time_rate);
+
+                } else if (param.get_name() == "visualization_pub_unknown_map_en") {
+                    std::lock_guard<std::mutex> lock(config_mutex_);
+                    cfg_.pub_unknown_map_en = param.as_bool();
+                    RCLCPP_INFO(nh_->get_logger(), "Updated pub_unknown_map_en to %s", 
+                                cfg_.pub_unknown_map_en ? "true" : "false");
+
+                } else if (param.get_name() == "map_sliding_threshold") {
+                    std::lock_guard<std::mutex> lock(config_mutex_);
+                    cfg_.map_sliding_thresh = param.as_double();
+                    RCLCPP_INFO(nh_->get_logger(), "Updated map_sliding_thresh to %.2f", cfg_.map_sliding_thresh);
+
+                } else if (param.get_name() == "resolution") {
+                    std::lock_guard<std::mutex> lock(config_mutex_);
+                    cfg_.resolution = param.as_double();
+                    RCLCPP_INFO(nh_->get_logger(), "Updated resolution to %.2f", cfg_.resolution);
+
+                } else if (param.get_name() == "inflation_resolution") {
+                    std::lock_guard<std::mutex> lock(config_mutex_);
+                    cfg_.inflation_resolution = param.as_double();
+                    RCLCPP_INFO(nh_->get_logger(), "Updated inflation_resolution to %.2f", cfg_.inflation_resolution);
+
+                } else if (param.get_name() == "unk_inflation_en") {
+                    std::lock_guard<std::mutex> lock(config_mutex_);
+                    cfg_.unk_inflation_en = param.as_bool();
+                    RCLCPP_INFO(nh_->get_logger(), "Updated unk_inflation_en to %s", 
+                                cfg_.unk_inflation_en ? "true" : "false");
+
+                } else if (param.get_name() == "unk_inflation_step") {
+                    {
+                        std::lock_guard<std::mutex> lock(config_mutex_);
+                        cfg_.unk_inflation_step = param.as_int();
+                        RCLCPP_INFO(nh_->get_logger(), "Updated unk_inflation_step to %d", cfg_.unk_inflation_step);
+                    }
+                    // 同时更新 inf_map_ 中的 unk_inflation_step
+                    if (inf_map_) {
+                        inf_map_->updateUnkInflationStep(param.as_int());
+                    }
+
+                } else if (param.get_name() == "frontier_extraction_en") {
+                    std::lock_guard<std::mutex> lock(config_mutex_);
+                    cfg_.frontier_extraction_en = param.as_bool();
+                    RCLCPP_INFO(nh_->get_logger(), "Updated frontier_extraction_en to %s", 
+                                cfg_.frontier_extraction_en ? "true" : "false");
+
+                } else if (param.get_name() == "virtual_ceil_height") {
+                    std::lock_guard<std::mutex> lock(config_mutex_);
+                    cfg_.virtual_ceil_height = param.as_double();
+                    RCLCPP_INFO(nh_->get_logger(), "Updated virtual_ceil_height to %.2f", cfg_.virtual_ceil_height);
+
+                } else if (param.get_name() == "virtual_ground_height") {
+                    std::lock_guard<std::mutex> lock(config_mutex_);
+                    cfg_.virtual_ground_height = param.as_double();
+                    RCLCPP_INFO(nh_->get_logger(), "Updated virtual_ground_height to %.2f", cfg_.virtual_ground_height);
+
+                } else if (param.get_name() == "load_pcd_en") {
+                    std::lock_guard<std::mutex> lock(config_mutex_);
+                    cfg_.load_pcd_en = param.as_bool();
+                    RCLCPP_INFO(nh_->get_logger(), "Updated load_pcd_en to %s", 
+                                cfg_.load_pcd_en ? "true" : "false");
+
+                } else if (param.get_name() == "map_sliding_en") {
+                    std::lock_guard<std::mutex> lock(config_mutex_);
+                    cfg_.map_sliding_en = param.as_bool();
+                    RCLCPP_INFO(nh_->get_logger(), "Updated map_sliding_en to %s", 
+                                cfg_.map_sliding_en ? "true" : "false");
+
+                } else if (param.get_name() == "ros_callback_en") {
+                    std::lock_guard<std::mutex> lock(config_mutex_);
+                    cfg_.ros_callback_en = param.as_bool();
+                    RCLCPP_INFO(nh_->get_logger(), "Updated ros_callback_en to %s", 
+                                cfg_.ros_callback_en ? "true" : "false");
+
+                } else if (param.get_name() == "cloud_topic") {
+                    std::lock_guard<std::mutex> lock(config_mutex_);
+                    cfg_.cloud_topic = param.as_string();
+                    RCLCPP_INFO(nh_->get_logger(), "Updated cloud_topic to %s", cfg_.cloud_topic.c_str());
+
+                } else if (param.get_name() == "odom_topic") {
+                    std::lock_guard<std::mutex> lock(config_mutex_);
+                    cfg_.odom_topic = param.as_string();
+                    RCLCPP_INFO(nh_->get_logger(), "Updated odom_topic to %s", cfg_.odom_topic.c_str());
+
+                } else if (param.get_name() == "odom_timeout") {
+                    std::lock_guard<std::mutex> lock(config_mutex_);
+                    cfg_.odom_timeout = param.as_double();
+                    RCLCPP_INFO(nh_->get_logger(), "Updated odom_timeout to %.2f", cfg_.odom_timeout);
+
+                } else if (param.get_name() == "use_dynamic_reconfigure") {
+                    std::lock_guard<std::mutex> lock(config_mutex_);
+                    cfg_.use_dynamic_reconfigure = param.as_bool();
+                    RCLCPP_INFO(nh_->get_logger(), "Updated use_dynamic_reconfigure to %s", 
+                                cfg_.use_dynamic_reconfigure ? "true" : "false");
+
+                } else if (param.get_name() == "viz_frame_rate") {
+                    std::lock_guard<std::mutex> lock(config_mutex_);
+                    cfg_.viz_frame_rate = param.as_int();
+                    RCLCPP_INFO(nh_->get_logger(), "Updated viz_frame_rate to %d", cfg_.viz_frame_rate);
+
+                } else if (param.get_name() == "frame_id") {
+                    std::lock_guard<std::mutex> lock(config_mutex_);
+                    cfg_.frame_id = param.as_string();
+                    RCLCPP_INFO(nh_->get_logger(), "Updated frame_id to %s", cfg_.frame_id.c_str());
+
+                } else if (param.get_name() == "intensity_thresh") {
+                    std::lock_guard<std::mutex> lock(config_mutex_);
+                    cfg_.intensity_thresh = param.as_int();
+                    RCLCPP_INFO(nh_->get_logger(), "Updated intensity_thresh to %d", cfg_.intensity_thresh);
+
+                } else if (param.get_name() == "point_filt_num") {
+                    std::lock_guard<std::mutex> lock(config_mutex_);
+                    cfg_.point_filt_num = param.as_int();
+                    RCLCPP_INFO(nh_->get_logger(), "Updated point_filt_num to %d", cfg_.point_filt_num);
+
+                } else if (param.get_name() == "batch_update_size") {
+                    std::lock_guard<std::mutex> lock(config_mutex_);
+                    cfg_.batch_update_size = param.as_int();
+                    RCLCPP_INFO(nh_->get_logger(), "Updated batch_update_size to %d", cfg_.batch_update_size);
+
+                } else if (param.get_name() == "unk_thresh") {
+                    std::lock_guard<std::mutex> lock(config_mutex_);
+                    cfg_.unk_thresh = param.as_double();
+                    RCLCPP_INFO(nh_->get_logger(), "Updated unk_thresh to %.2f", cfg_.unk_thresh);
+
+                } else {
+                    RCLCPP_WARN(nh_->get_logger(), "Unknown parameter: %s", param.get_name().c_str());
+                    result.successful = false;
+                    result.reason = "Unknown parameter: " + param.get_name();
+                    break;
+                }
+            }
+
+            return result;
+        }
+        
+        // Logit函数
+        double calculate_logit(double val) {
+            if (val <= 0.0) val = 0.001;
+            if (val >= 1.0) val = 0.999;
+            return std::log(val / (1.0 - val));
+        }
+        
+        mutable std::mutex config_mutex_;  // 保护配置参数的互斥锁
+        
+        // 动态参数回调处理器
+        rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr param_callback_handle_;
+        
+        void registerDynamicParameters() {
+            // 空实现：动态参数由外部（如super_planner）管理
+            // ROGMap只提供updateParameters接口供外部调用
+        }
+        
         void vecEVec3fToPC2(const vec_E<Vec3f>& points, sensor_msgs::msg::PointCloud2& cloud) {
             // 设置header信息
             pcl::PointCloud<pcl::PointXYZ> pcl_cloud;
@@ -314,6 +558,11 @@ namespace rog_map {
     public:
         typedef shared_ptr<ROGMapROS> Ptr;
 
+        // 公共接口用于外部调用参数更新
+        rcl_interfaces::msg::SetParametersResult updateParameters(const std::vector<rclcpp::Parameter> &parameters) {
+            return parametersCallback(parameters);
+        }
+
         ROGMapROS(const rclcpp::Node::SharedPtr nh, const std::string& cfg_path): nh_(nh) {
             const rclcpp::QoS qos(rclcpp::QoS(10)
                                           .reliable()
@@ -325,6 +574,10 @@ namespace rog_map {
             br_map_ego_ = std::make_shared<tf2_ros::TransformBroadcaster>(nh_);
 
             init();
+            
+            // 注意：动态参数由外部（如super_planner）管理，这里只提供updateParameters接口
+            // 不注册自己的参数回调，避免与外部管理冲突
+            
             /// Initialize visualization module
             if (cfg_.visualization_en) {
                 vm_.occ_pub = nh_->create_publisher<sensor_msgs::msg::PointCloud2>("rog_map/occ", qos);
