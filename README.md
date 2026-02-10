@@ -132,10 +132,9 @@ bash ${PATH-TO-SUPER}/SUPER/scripts/select_ros_version.sh ROS2
 
 ## 2.2 ROS2 (Humble) 安装
 ```bash
-mkdir -p super_ws/src && cd super_ws/src
-git clone https://github.com/hku-mars/SUPER.git
-cd ..
-colcon build --symlink-install
+git clone https://github.com/ruiqichao/Super-ros2.git
+cd Super-ros2
+colcon build --symlink-install --cmake-args -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 ```
 
 要测试，请运行以下命令：
